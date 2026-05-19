@@ -1,0 +1,25 @@
+{
+  "name": "EJC Gincana",
+  "short_name": "EJC Gincana",
+  "description": "Sistema de pontuação para Gincana da EJC",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f0221",
+  "theme_color": "#1a0533",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"]
+}
