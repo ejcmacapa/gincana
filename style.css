@@ -186,12 +186,12 @@ body.auth-active {
 .user-badge.visitor  { background: rgba(167,139,181,.1); border-color: var(--muted);  color: var(--muted); }
 .user-badge.superadmin { background: rgba(192,38,211,.2); border-color: var(--accent2); color: var(--accent2); }
 
-/* admin-only: oculto para visitantes (controlado via JS) */
-.admin-only { display: none; }
-.is-admin .admin-only { display: flex; }
-.is-admin .tab.admin-only { display: block; }
-.is-admin .fab-area.admin-only { display: flex; }
-.is-admin .icon-btn.admin-only { display: flex; }
+/* admin-only: oculto para visitantes e antes do login (controlado via JS + classe no body) */
+.admin-only                    { display: none !important; }
+.is-admin .admin-only          { display: flex !important; }
+.is-admin .tab.admin-only      { display: block !important; }
+.is-admin .fab-area.admin-only { display: flex !important; }
+.is-admin .icon-btn.admin-only { display: flex !important; }
 
 /* ── GLOBAL FILTER BAR ── */
 .global-filter-bar {
@@ -367,6 +367,33 @@ body.auth-active {
    RELATÓRIO / EXPORTAÇÃO
 ════════════════════════════════════════ */
 .report-controls { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:1rem; display:flex; flex-direction:column; gap:.75rem; }
+
+/* Grid de formato de imagem */
+.report-format-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .45rem;
+}
+.report-fmt-btn {
+  background: var(--card2); border: 2px solid var(--border);
+  border-radius: var(--radius-sm); padding: .6rem .5rem;
+  cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; gap: .15rem;
+  transition: background .2s, border-color .2s;
+}
+.report-fmt-btn.active {
+  background: rgba(192,38,211,.12);
+  border-color: var(--accent2);
+}
+.fmt-icon { font-size: 1.4rem; line-height: 1; }
+.fmt-name {
+  font-family: 'Nunito', sans-serif;
+  font-size: .78rem; font-weight: 900; color: var(--text);
+}
+.fmt-size {
+  font-size: .62rem; color: var(--muted); font-family: 'Nunito', sans-serif;
+}
+.report-fmt-btn.active .fmt-name { color: var(--accent2); }
 
 /* Toggle de tipo de conteúdo */
 .report-content-toggle {

@@ -209,36 +209,42 @@ function watchPendingProfile() {
 async function launchApp() {
   renderHome._alerted = false;
   hideAllScreens();
-  const splash = document.getElementById('splash');
-  splash.classList.add('fade-out', 'hidden');
-  document.getElementById('app').classList.remove('hidden');
 
   try {
     await Promise.all([loadTeams(), loadEntries(), loadGincanas(), loadProfiles(), loadEvents()]);
   } catch (e) {
     showToast('Erro ao carregar dados. Verifique a conexão.', 'error');
   }
+
+  // applyRoleUI ANTES de mostrar o app — evita flash dos botões admin
   applyRoleUI();
   renderAll();
   subscribeRealtime();
+
+  const splash = document.getElementById('splash');
+  splash.classList.add('fade-out', 'hidden');
+  document.getElementById('app').classList.remove('hidden');
 }
 
 async function boot_guest() {
   renderHome._alerted = false;
   isGuest = true;
   hideAllScreens();
-  const splash = document.getElementById('splash');
-  splash.classList.add('fade-out', 'hidden');
-  document.getElementById('app').classList.remove('hidden');
 
   try {
     await Promise.all([loadTeams(), loadEntries(), loadGincanas(), loadEvents()]);
   } catch (e) {
     showToast('Erro ao carregar dados. Verifique a conexão.', 'error');
   }
+
+  // applyRoleUI ANTES de mostrar o app
   applyRoleUI();
   renderAll();
   subscribeRealtime();
+
+  const splash = document.getElementById('splash');
+  splash.classList.add('fade-out', 'hidden');
+  document.getElementById('app').classList.remove('hidden');
 }
 
 // ─── TELAS DE AUTH ──────────────────────────────────
@@ -820,15 +826,57 @@ function renderReport() {
 }
 
 async function exportImage() {
-  const card = document.getElementById('report-card');
-  showToast('Gerando imagem...', 'info');
+  const card   = document.getElementById('report-card');
+  const format = document.getElementById('report-img-format')?.value || 'auto';
+
+  // Dimensões alvo por preset (largura × altura em px)
+  const presets = {
+    stories: { w: 1080, h: 1920, label: 'Stories Instagram' },
+    feed:    { w: 1080, h: 1080, label: 'Feed Instagram'    },
+    slide:   { w: 1920, h: 1080, label: 'Slide / Widescreen' },
+    auto:    { w: null, h: null, label: 'Alta qualidade'    }
+  };
+  const preset = presets[format] || presets.auto;
+
+  showToast(`Gerando ${preset.label}...`, 'info');
   try {
-    const canvas = await html2canvas(card, { backgroundColor: '#1a0533', scale: 2, useCORS: true });
+    // Captura o card em alta escala
+    const scale  = format === 'auto' ? 3 : 4;
+    const canvas = await html2canvas(card, { backgroundColor: '#1a0533', scale, useCORS: true });
+
+    let finalCanvas = canvas;
+
+    if (preset.w && preset.h) {
+      // Redimensiona para o formato alvo mantendo proporção + padding
+      finalCanvas = document.createElement('canvas');
+      finalCanvas.width  = preset.w;
+      finalCanvas.height = preset.h;
+      const ctx = finalCanvas.getContext('2d');
+
+      // Fundo
+      ctx.fillStyle = '#1a0533';
+      ctx.fillRect(0, 0, preset.w, preset.h);
+
+      // Calcula área disponível com padding
+      const pad    = format === 'stories' ? 60 : 40;
+      const areaW  = preset.w - pad * 2;
+      const areaH  = preset.h - pad * 2;
+
+      // Escala da imagem capturada para caber na área
+      const ratio  = Math.min(areaW / canvas.width, areaH / canvas.height);
+      const drawW  = Math.round(canvas.width  * ratio);
+      const drawH  = Math.round(canvas.height * ratio);
+      const offX   = Math.round((preset.w - drawW) / 2);
+      const offY   = Math.round((preset.h - drawH) / 2);
+
+      ctx.drawImage(canvas, offX, offY, drawW, drawH);
+    }
+
     const link = document.createElement('a');
-    link.download = `ranking-ejc-${today()}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.download = `ranking-ejc-${format}-${today()}.png`;
+    link.href = finalCanvas.toDataURL('image/png');
     link.click();
-    showToast('Imagem salva! 📸', 'success');
+    showToast(`${preset.label} salvo! 📸`, 'success');
   } catch (e) { showToast('Erro ao gerar imagem.', 'error'); }
 }
 
@@ -1895,6 +1943,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('report-period-select').addEventListener('change', renderReport);
   document.getElementById('btn-export-img').addEventListener('click', exportImage);
   document.getElementById('btn-export-pdf').addEventListener('click', exportPDF);
+
+  // Seletor de formato de imagem
+  document.querySelectorAll('.report-fmt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.report-fmt-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('report-img-format').value = btn.dataset.fmt;
+    });
+  });
   document.getElementById('btn-report-custom-apply')?.addEventListener('click', () => {
     const from = document.getElementById('report-date-from').value;
     const to   = document.getElementById('report-date-to').value;

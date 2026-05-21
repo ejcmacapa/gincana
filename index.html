@@ -259,6 +259,14 @@
         <input type="hidden" id="report-content-type" value="ranking" />
       </div>
 
+      <!-- Filtro de equipe -->
+      <div class="form-field">
+        <label>Equipe</label>
+        <select id="report-team-select">
+          <option value="all">👥 Todas as equipes</option>
+        </select>
+      </div>
+
       <!-- Período -->
       <div class="form-field">
         <label>Período do relatório</label>
@@ -292,6 +300,34 @@
         <button class="btn-report" id="btn-export-img">📸 Salvar Imagem</button>
         <button class="btn-report btn-report-pdf" id="btn-export-pdf">📄 Salvar PDF</button>
       </div>
+
+      <!-- Formato de exportação de imagem -->
+      <div class="form-field">
+        <label>Formato da imagem</label>
+        <div class="report-format-grid">
+          <button class="report-fmt-btn active" data-fmt="stories">
+            <span class="fmt-icon">📱</span>
+            <span class="fmt-name">Stories</span>
+            <span class="fmt-size">1080 × 1920</span>
+          </button>
+          <button class="report-fmt-btn" data-fmt="feed">
+            <span class="fmt-icon">🟫</span>
+            <span class="fmt-name">Feed</span>
+            <span class="fmt-size">1080 × 1080</span>
+          </button>
+          <button class="report-fmt-btn" data-fmt="slide">
+            <span class="fmt-icon">🖥️</span>
+            <span class="fmt-name">Slide</span>
+            <span class="fmt-size">1920 × 1080</span>
+          </button>
+          <button class="report-fmt-btn" data-fmt="auto">
+            <span class="fmt-icon">📐</span>
+            <span class="fmt-name">Automático</span>
+            <span class="fmt-size">Alta qualidade</span>
+          </button>
+        </div>
+        <input type="hidden" id="report-img-format" value="stories" />
+      </div>
     </div>
 
     <!-- Card que será capturado -->
@@ -304,6 +340,8 @@
         </div>
       </div>
       <div id="report-period-label" class="report-period"></div>
+      <!-- Badge de colocação — aparece só quando uma equipe específica é selecionada -->
+      <div id="report-placement-badge" class="report-placement-badge hidden"></div>
 
       <!-- Seção ranking -->
       <div id="report-ranking-section">
