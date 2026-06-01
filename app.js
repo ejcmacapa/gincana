@@ -829,7 +829,6 @@ async function exportImage() {
   const card   = document.getElementById('report-card');
   const format = document.getElementById('report-img-format')?.value || 'auto';
 
-  // Dimensões alvo por preset (largura × altura em px)
   const presets = {
     stories: { w: 1080, h: 1920, label: 'Stories Instagram' },
     feed:    { w: 1080, h: 1080, label: 'Feed Instagram'    },
@@ -837,47 +836,83 @@ async function exportImage() {
     auto:    { w: null, h: null, label: 'Alta qualidade'    }
   };
   const preset = presets[format] || presets.auto;
-
   showToast(`Gerando ${preset.label}...`, 'info');
+
   try {
-    // Captura o card em alta escala
-    const scale  = format === 'auto' ? 3 : 4;
-    const canvas = await html2canvas(card, { backgroundColor: '#1a0533', scale, useCORS: true });
-
-    let finalCanvas = canvas;
-
-    if (preset.w && preset.h) {
-      // Redimensiona para o formato alvo mantendo proporção + padding
-      finalCanvas = document.createElement('canvas');
-      finalCanvas.width  = preset.w;
-      finalCanvas.height = preset.h;
-      const ctx = finalCanvas.getContext('2d');
-
-      // Fundo
-      ctx.fillStyle = '#1a0533';
-      ctx.fillRect(0, 0, preset.w, preset.h);
-
-      // Calcula área disponível com padding
-      const pad    = format === 'stories' ? 60 : 40;
-      const areaW  = preset.w - pad * 2;
-      const areaH  = preset.h - pad * 2;
-
-      // Escala da imagem capturada para caber na área
-      const ratio  = Math.min(areaW / canvas.width, areaH / canvas.height);
-      const drawW  = Math.round(canvas.width  * ratio);
-      const drawH  = Math.round(canvas.height * ratio);
-      const offX   = Math.round((preset.w - drawW) / 2);
-      const offY   = Math.round((preset.h - drawH) / 2);
-
-      ctx.drawImage(canvas, offX, offY, drawW, drawH);
+    if (!preset.w) {
+      // Automático — captura simples em alta qualidade
+      const canvas = await html2canvas(card, { backgroundColor: '#1a0533', scale: 3, useCORS: true });
+      const link = document.createElement('a');
+      link.download = `ranking-ejc-auto-${today()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast(`${preset.label} salvo! 📸`, 'success');
+      return;
     }
+
+    // Calcula o scale necessário para a largura do card atingir
+    // pelo menos a largura alvo (com padding lateral de 80px)
+    const cardRect  = card.getBoundingClientRect();
+    const usableW   = preset.w - 160; // padding lateral total
+    const scaleNeeded = usableW / cardRect.width;
+    // Usa no mínimo 2× para qualidade
+    const captureScale = Math.max(2, Math.ceil(scaleNeeded));
+
+    const captured = await html2canvas(card, {
+      backgroundColor: '#1a0533',
+      scale: captureScale,
+      useCORS: true
+    });
+
+    // Monta o canvas final no tamanho do preset
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width  = preset.w;
+    finalCanvas.height = preset.h;
+    const ctx = finalCanvas.getContext('2d');
+
+    // Fundo roxo
+    ctx.fillStyle = '#0f0221';
+    ctx.fillRect(0, 0, preset.w, preset.h);
+
+    // Gradiente de fundo sutil (igual ao app)
+    const grad = ctx.createRadialGradient(preset.w / 2, preset.h * 0.25, 0, preset.w / 2, preset.h * 0.25, preset.w * 0.8);
+    grad.addColorStop(0, 'rgba(59,7,100,0.8)');
+    grad.addColorStop(1, 'rgba(15,2,33,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, preset.w, preset.h);
+
+    // Calcula dimensões do card renderizado dentro do canvas alvo
+    const pad  = 80;
+    const maxW = preset.w - pad * 2;
+    const maxH = preset.h - pad * 2;
+    const ratio = Math.min(maxW / captured.width, maxH / captured.height);
+    const drawW = Math.round(captured.width  * ratio);
+    const drawH = Math.round(captured.height * ratio);
+    // Centraliza horizontalmente, posiciona no centro vertical (levemente acima)
+    const offX = Math.round((preset.w - drawW) / 2);
+    const offY = Math.round((preset.h - drawH) / 2);
+
+    // Sombra suave no card
+    ctx.shadowColor   = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur    = 40;
+    ctx.shadowOffsetY = 8;
+    ctx.drawImage(captured, offX, offY, drawW, drawH);
+
+    // Rodapé EJC Macapá
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+    ctx.font        = `bold ${Math.round(preset.w * 0.022)}px Nunito, sans-serif`;
+    ctx.fillStyle   = 'rgba(167,139,181,0.7)';
+    ctx.textAlign   = 'center';
+    ctx.fillText('EJC GINCANA · MACAPÁ', preset.w / 2, preset.h - 36);
 
     const link = document.createElement('a');
     link.download = `ranking-ejc-${format}-${today()}.png`;
     link.href = finalCanvas.toDataURL('image/png');
     link.click();
     showToast(`${preset.label} salvo! 📸`, 'success');
-  } catch (e) { showToast('Erro ao gerar imagem.', 'error'); }
+  } catch (e) {
+    showToast('Erro ao gerar imagem. Tente o formato Automático.', 'error');
+  }
 }
 
 async function exportPDF() {
