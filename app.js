@@ -826,9 +826,7 @@ function renderReport() {
 }
 
 async function exportImage() {
-  const card   = document.getElementById('report-card');
   const format = document.getElementById('report-img-format')?.value || 'auto';
-
   const presets = {
     stories: { w: 1080, h: 1920, label: 'Stories Instagram' },
     feed:    { w: 1080, h: 1080, label: 'Feed Instagram'    },
@@ -839,78 +837,163 @@ async function exportImage() {
   showToast(`Gerando ${preset.label}...`, 'info');
 
   try {
+    // Modo automático — captura o DOM normalmente
     if (!preset.w) {
-      // Automático — captura simples em alta qualidade
+      const card   = document.getElementById('report-card');
       const canvas = await html2canvas(card, { backgroundColor: '#1a0533', scale: 3, useCORS: true });
-      const link = document.createElement('a');
+      const link   = document.createElement('a');
       link.download = `ranking-ejc-auto-${today()}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.href     = canvas.toDataURL('image/png');
       link.click();
-      showToast(`${preset.label} salvo! 📸`, 'success');
+      showToast('Alta qualidade salva! 📸', 'success');
       return;
     }
 
-    // Calcula o scale necessário para a largura do card atingir
-    // pelo menos a largura alvo (com padding lateral de 80px)
-    const cardRect  = card.getBoundingClientRect();
-    const usableW   = preset.w - 160; // padding lateral total
-    const scaleNeeded = usableW / cardRect.width;
-    // Usa no mínimo 2× para qualidade
-    const captureScale = Math.max(2, Math.ceil(scaleNeeded));
+    // Modos com formato fixo — desenha diretamente no canvas
+    const W = preset.w, H = preset.h;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
 
-    const captured = await html2canvas(card, {
-      backgroundColor: '#1a0533',
-      scale: captureScale,
-      useCORS: true
-    });
-
-    // Monta o canvas final no tamanho do preset
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width  = preset.w;
-    finalCanvas.height = preset.h;
-    const ctx = finalCanvas.getContext('2d');
-
-    // Fundo roxo
+    // ── Fundo ──────────────────────────────────────────
     ctx.fillStyle = '#0f0221';
-    ctx.fillRect(0, 0, preset.w, preset.h);
-
-    // Gradiente de fundo sutil (igual ao app)
-    const grad = ctx.createRadialGradient(preset.w / 2, preset.h * 0.25, 0, preset.w / 2, preset.h * 0.25, preset.w * 0.8);
-    grad.addColorStop(0, 'rgba(59,7,100,0.8)');
+    ctx.fillRect(0, 0, W, H);
+    const grad = ctx.createRadialGradient(W / 2, H * 0.15, 0, W / 2, H * 0.15, W);
+    grad.addColorStop(0, 'rgba(59,7,100,0.95)');
     grad.addColorStop(1, 'rgba(15,2,33,0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, preset.w, preset.h);
+    ctx.fillRect(0, 0, W, H);
 
-    // Calcula dimensões do card renderizado dentro do canvas alvo
-    const pad  = 80;
-    const maxW = preset.w - pad * 2;
-    const maxH = preset.h - pad * 2;
-    const ratio = Math.min(maxW / captured.width, maxH / captured.height);
-    const drawW = Math.round(captured.width  * ratio);
-    const drawH = Math.round(captured.height * ratio);
-    // Centraliza horizontalmente, posiciona no centro vertical (levemente acima)
-    const offX = Math.round((preset.w - drawW) / 2);
-    const offY = Math.round((preset.h - drawH) / 2);
+    // ── Logo ────────────────────────────────────────────
+    const logoSize = Math.round(W * 0.2);
+    const logoImg  = new Image();
+    logoImg.crossOrigin = 'anonymous';
+    await new Promise(res => { logoImg.onload = res; logoImg.onerror = res; logoImg.src = 'icon-192.png'; });
+    const topY = Math.round(H * 0.055);
+    if (logoImg.complete && logoImg.naturalWidth) {
+      ctx.drawImage(logoImg, W / 2 - logoSize / 2, topY, logoSize, logoSize);
+    }
 
-    // Sombra suave no card
-    ctx.shadowColor   = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur    = 40;
-    ctx.shadowOffsetY = 8;
-    ctx.drawImage(captured, offX, offY, drawW, drawH);
+    // ── Título ──────────────────────────────────────────
+    const titleY = topY + logoSize + Math.round(H * 0.025);
+    ctx.shadowColor = 'rgba(245,200,66,0.45)'; ctx.shadowBlur = 40;
+    ctx.font = `900 ${Math.round(W * 0.11)}px 'Bebas Neue', sans-serif`;
+    ctx.fillStyle = '#f5c842'; ctx.textAlign = 'center';
+    ctx.fillText('EJC GINCANA', W / 2, titleY);
 
-    // Rodapé EJC Macapá
-    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
-    ctx.font        = `bold ${Math.round(preset.w * 0.022)}px Nunito, sans-serif`;
-    ctx.fillStyle   = 'rgba(167,139,181,0.7)';
-    ctx.textAlign   = 'center';
-    ctx.fillText('EJC GINCANA · MACAPÁ', preset.w / 2, preset.h - 36);
+    ctx.shadowBlur = 0;
+    ctx.font = `700 ${Math.round(W * 0.042)}px Nunito, sans-serif`;
+    ctx.fillStyle = '#e879f9';
+    ctx.fillText('MACAPÁ', W / 2, titleY + Math.round(H * 0.038));
 
-    const link = document.createElement('a');
+    // ── Período ─────────────────────────────────────────
+    const periodLabel = document.getElementById('report-period-label')?.textContent || '';
+    const periodY     = titleY + Math.round(H * 0.085);
+    ctx.font      = `600 ${Math.round(W * 0.033)}px Nunito, sans-serif`;
+    ctx.fillStyle = 'rgba(167,139,181,0.9)';
+    ctx.fillText(periodLabel, W / 2, periodY);
+
+    // ── Linha + título RANKING ──────────────────────────
+    const secY = periodY + Math.round(H * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(W * 0.08, secY); ctx.lineTo(W * 0.92, secY);
+    ctx.strokeStyle = 'rgba(245,200,66,0.3)'; ctx.lineWidth = 2; ctx.stroke();
+
+    const rankTitleY = secY + Math.round(H * 0.04);
+    ctx.font      = `900 ${Math.round(W * 0.065)}px 'Bebas Neue', sans-serif`;
+    ctx.fillStyle = '#f5c842';
+    ctx.fillText('🏆 RANKING', W / 2, rankTitleY);
+
+    // ── Coleta dados do ranking ─────────────────────────
+    const period     = document.getElementById('report-period-select')?.value || 'week';
+    const teamFilter = document.getElementById('report-team-select')?.value   || 'all';
+    let start = null, end = null;
+    switch (period) {
+      case 'today':  start = end = today(); break;
+      case 'week':   { const w = getWeekRange();  start = w.start; end = w.end; break; }
+      case 'month':  { const m = getMonthRange(); start = m.start; end = m.end; break; }
+      case 'year':   { const y = getYearRange();  start = y.start; end = y.end; break; }
+      case 'custom': {
+        start = document.getElementById('report-date-from')?.value || null;
+        end   = document.getElementById('report-date-to')?.value   || null;
+        break;
+      }
+    }
+    const periodEntries = start
+      ? entries.filter(e => (e.data_entry || '') >= start && (e.data_entry || '') <= end)
+      : entries;
+    const filtered = teamFilter === 'all' ? periodEntries : periodEntries.filter(e => e.team_id === teamFilter);
+    const ranking  = calcRanking(filtered);
+
+    // ── Itens do ranking ────────────────────────────────
+    const medals     = ['🥇', '🥈', '🥉'];
+    const itemPad    = Math.round(W * 0.06);
+    const itemW      = W - itemPad * 2;
+    const itemH      = Math.round(H * 0.068);
+    const itemGap    = Math.round(H * 0.011);
+    const nameFont   = Math.round(W * 0.044);
+    const medalFont  = Math.round(W * 0.058);
+    const ptsFont    = Math.round(W * 0.062);
+    const bgColors   = ['rgba(245,200,66,0.13)', 'rgba(148,163,184,0.08)', 'rgba(180,83,9,0.10)'];
+    const bdColors   = ['rgba(245,200,66,0.4)',  'rgba(148,163,184,0.2)', 'rgba(180,83,9,0.3)'];
+
+    let curY = rankTitleY + Math.round(H * 0.03);
+
+    for (let i = 0; i < ranking.length; i++) {
+      const t = ranking[i];
+
+      // Card arredondado
+      ctx.beginPath();
+      ctx.roundRect(itemPad, curY, itemW, itemH, 14);
+      ctx.fillStyle   = i < 3 ? bgColors[i] : 'rgba(255,255,255,0.04)'; ctx.fill();
+      ctx.strokeStyle = i < 3 ? bdColors[i] : 'rgba(255,255,255,0.08)'; ctx.lineWidth = 2; ctx.stroke();
+
+      const midY = curY + itemH / 2;
+
+      // Medalha / posição
+      ctx.font      = `900 ${medalFont}px 'Bebas Neue', sans-serif`;
+      ctx.fillStyle = i === 0 ? '#f5c842' : i === 1 ? '#94a3b8' : i === 2 ? '#d97706' : '#a78bb5';
+      ctx.textAlign = 'left';
+      ctx.fillText(i < 3 ? medals[i] : `${i + 1}º`, itemPad + Math.round(W * 0.025), midY + medalFont * 0.36);
+
+      // Dot cor da equipe
+      const dotX = itemPad + Math.round(W * 0.14);
+      const dotR  = Math.round(W * 0.02);
+      ctx.beginPath(); ctx.arc(dotX, midY, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = t.color || '#888'; ctx.fill();
+
+      // Nome
+      ctx.font      = `900 ${nameFont}px Nunito, sans-serif`;
+      ctx.fillStyle = '#f0e6ff'; ctx.textAlign = 'left';
+      // Trunca nome se muito longo
+      let nome = t.name;
+      while (ctx.measureText(nome).width > itemW * 0.52 && nome.length > 1) nome = nome.slice(0, -1);
+      if (nome !== t.name) nome += '…';
+      ctx.fillText(nome, dotX + dotR * 2 + Math.round(W * 0.02), midY + nameFont * 0.36);
+
+      // Pontuação
+      ctx.font      = `900 ${ptsFont}px 'Bebas Neue', sans-serif`;
+      ctx.fillStyle = t.pts < 0 ? '#ef4444' : '#f5c842';
+      ctx.textAlign = 'right';
+      ctx.fillText((t.pts > 0 ? '+' : '') + t.pts, itemPad + itemW - Math.round(W * 0.03), midY + ptsFont * 0.36);
+
+      curY += itemH + itemGap;
+    }
+
+    // ── Rodapé ──────────────────────────────────────────
+    ctx.font      = `600 ${Math.round(W * 0.026)}px Nunito, sans-serif`;
+    ctx.fillStyle = 'rgba(167,139,181,0.5)';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Gerado em ${new Date().toLocaleString('pt-BR')}`, W / 2, H - Math.round(H * 0.03));
+
+    const link    = document.createElement('a');
     link.download = `ranking-ejc-${format}-${today()}.png`;
-    link.href = finalCanvas.toDataURL('image/png');
+    link.href     = c.toDataURL('image/png');
     link.click();
     showToast(`${preset.label} salvo! 📸`, 'success');
+
   } catch (e) {
+    console.error(e);
     showToast('Erro ao gerar imagem. Tente o formato Automático.', 'error');
   }
 }
