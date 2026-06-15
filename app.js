@@ -1221,7 +1221,7 @@ function renderGincanasTab() {
       <div class="gin-entity-meta">
         ${g.data_gin   ? `<span class="gin-entity-date">📅 ${fmtDate(g.data_gin)}</span>` : ''}
         ${g.max_pts    ? `<span class="gin-entity-maxpts">${g.max_pts} pts máx.</span>` : ''}
-        ${g.scoring_type ? `<span class="gin-entity-maxpts">${g.scoring_type === 'time' ? '⏱ TEMPO' : '🏅 PONTOS'}</span>` : ''}
+        ${g.scoring_type ? `<span class="gin-entity-maxpts">${g.scoring_type === 'time' ? '⏱ TEMPO' : g.scoring_type === 'multiplier' ? `✖️ ${g.multiplier_value||0} pts/un.` : '🏅 PONTOS'}</span>` : ''}
       </div>
       ${hasObs ? `<div class="gin-entity-obs-preview">${escHtml(g.obs)}</div>
         <button class="gin-see-more" data-view-gin="${g.id}">Ver dinâmica →</button>` : ''}
@@ -1242,7 +1242,10 @@ function startEditGin(id) {
   const st = g.scoring_type || 'points';
   document.getElementById('gin-scoring-type').value = st;
   document.querySelectorAll('.scoring-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(st === 'time' ? 'gin-type-time' : 'gin-type-points').classList.add('active');
+  const btnId = st === 'time' ? 'gin-type-time' : st === 'multiplier' ? 'gin-type-multiplier' : 'gin-type-points';
+  document.getElementById(btnId).classList.add('active');
+  document.getElementById('gin-multiplier-field').classList.toggle('hidden', st !== 'multiplier');
+  document.getElementById('gin-multiplier-value').value = g.multiplier_value || '';
   document.getElementById('gin-form-title').textContent = '✏️ Editar Gincana';
   document.getElementById('gin-form-title').classList.add('editing-mode');
   document.getElementById('gin-form-card').classList.add('editing');
@@ -1258,6 +1261,8 @@ function cancelEditGin() {
   document.getElementById('gin-maxpts-input').value = '';
   document.getElementById('gin-obs-input').value    = '';
   document.getElementById('gin-scoring-type').value = 'points';
+  document.getElementById('gin-multiplier-value').value = '';
+  document.getElementById('gin-multiplier-field').classList.add('hidden');
   document.querySelectorAll('.scoring-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('gin-type-points').classList.add('active');
   document.getElementById('gin-form-title').textContent = '✨ Nova Gincana';
@@ -1274,8 +1279,18 @@ async function saveGincana() {
   const maxPts      = document.getElementById('gin-maxpts-input').value;
   const obs         = document.getElementById('gin-obs-input').value.trim();
   const scoringType = document.getElementById('gin-scoring-type').value || 'points';
+  const multiplierValue = document.getElementById('gin-multiplier-value').value;
   if (!name) return showToast('Digite o nome!', 'error');
-  const payload = { name, data_gin: date || null, max_pts: maxPts ? Number(maxPts) : null, obs: obs || null, scoring_type: scoringType };
+  if (scoringType === 'multiplier' && (!multiplierValue || Number(multiplierValue) <= 0)) {
+    return showToast('Informe o valor por unidade do multiplicador!', 'error');
+  }
+  const payload = {
+    name, data_gin: date || null,
+    max_pts: maxPts ? Number(maxPts) : null,
+    obs: obs || null,
+    scoring_type: scoringType,
+    multiplier_value: scoringType === 'multiplier' ? Number(multiplierValue) : null
+  };
   try {
     if (editingGinId) {
       const { error } = await sb.from('gincanas').update(payload).eq('id', editingGinId);
@@ -1324,7 +1339,7 @@ function viewGinDetail(id) {
     <div class="gin-detail-meta">
       ${g.data_gin    ? `<span class="gin-detail-chip">📅 ${fmtDate(g.data_gin)}</span>` : ''}
       ${g.max_pts     ? `<span class="gin-detail-chip">🏅 ${g.max_pts} pts</span>` : ''}
-      ${g.scoring_type ? `<span class="gin-detail-chip">${g.scoring_type === 'time' ? '⏱ TEMPO' : '🏅 PONTOS'}</span>` : ''}
+      ${g.scoring_type ? `<span class="gin-detail-chip">${g.scoring_type === 'time' ? '⏱ TEMPO' : g.scoring_type === 'multiplier' ? `✖️ MULTIPLICADOR (${g.multiplier_value||0} pts/un.)` : '🏅 PONTOS'}</span>` : ''}
     </div>
     ${g.obs ? `<div class="gin-detail-obs-label">📝 Dinâmica</div><div class="gin-detail-obs">${escHtml(g.obs)}</div>` : '<p style="color:var(--muted)">Sem observações.</p>'}`;
   openModal('modal-gin-detail');
@@ -1760,7 +1775,10 @@ function populateSelects() {
   const teamOpts = teams.length
     ? teams.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('')
     : '<option disabled>Nenhuma equipe cadastrada</option>';
-  const ginOpts = gincanas.map(g => `<option value="${g.id}">${escHtml(g.name)}</option>`).join('');
+  const ginOpts = gincanas.map(g => {
+    const icon = g.scoring_type === 'time' ? '⏱' : g.scoring_type === 'multiplier' ? '✖️' : '🏅';
+    return `<option value="${g.id}">${icon} ${escHtml(g.name)}</option>`;
+  }).join('');
 
   function rebuild(id, prefix, extra) {
     const sel = document.getElementById(id), cur = sel.value;
@@ -1930,10 +1948,45 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('score-time-min').value = '';
     document.getElementById('score-time-sec').value = '';
     document.getElementById('score-time-ms').value  = '';
+    // Reseta área de multiplicador
+    document.getElementById('score-multiplier-area').classList.add('hidden');
+    document.getElementById('score-multiplier-qty').value = '';
+    document.getElementById('score-multiplier-total').textContent = '0';
     openModal('modal-score');
   };
   document.getElementById('btn-header-score').addEventListener('click', openScoreModal);
   document.getElementById('fab-score').addEventListener('click', openScoreModal);
+
+  // ── Lógica do MULTIPLICADOR no modal de pontuar ──
+  document.getElementById('score-gin').addEventListener('change', e => {
+    const gin = ginById(e.target.value);
+    const area = document.getElementById('score-multiplier-area');
+    const qtyInput = document.getElementById('score-multiplier-qty');
+
+    if (gin && gin.scoring_type === 'multiplier') {
+      const mv = Number(gin.multiplier_value) || 0;
+      document.getElementById('score-multiplier-label').textContent = `✖️ Valor por unidade: ${mv} pts`;
+      area.classList.remove('hidden');
+      qtyInput.value = '';
+      document.getElementById('score-multiplier-total').textContent = '0';
+      // Limpa o campo de pontuação manual — será preenchido automaticamente
+      document.getElementById('score-pts').value = '';
+      document.querySelectorAll('#modal-score .qpt').forEach(b => b.classList.remove('selected'));
+    } else {
+      area.classList.add('hidden');
+    }
+  });
+
+  // Recalcula o total ao digitar a quantidade
+  document.getElementById('score-multiplier-qty').addEventListener('input', e => {
+    const gin = ginById(document.getElementById('score-gin').value);
+    const mv  = gin ? Number(gin.multiplier_value) || 0 : 0;
+    const qty = Number(e.target.value) || 0;
+    const total = mv * qty;
+    document.getElementById('score-multiplier-total').textContent = total;
+    // Preenche o campo de pontuação automaticamente
+    document.getElementById('score-pts').value = total > 0 ? total : '';
+  });
 
   const openPunModal = () => {
     populateSelects();
@@ -2037,6 +2090,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.scoring-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('gin-scoring-type').value = btn.dataset.type;
+      document.getElementById('gin-multiplier-field').classList.toggle('hidden', btn.dataset.type !== 'multiplier');
     });
   });
 

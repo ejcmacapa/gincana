@@ -425,11 +425,21 @@
       </div>
       <div class="form-field">
         <label>Tipo de Pontuação</label>
-        <div class="scoring-type-toggle">
+        <div class="scoring-type-toggle scoring-type-toggle-3">
           <button class="scoring-btn active" data-type="points" id="gin-type-points">🏅 PONTOS<span class="scoring-btn-sub">Vence quem soma mais</span></button>
           <button class="scoring-btn" data-type="time" id="gin-type-time">⏱ TEMPO<span class="scoring-btn-sub">Vence quem faz mais rápido</span></button>
+          <button class="scoring-btn" data-type="multiplier" id="gin-type-multiplier">✖️ MULTIPLICADOR<span class="scoring-btn-sub">Pts por unidade/pessoa</span></button>
         </div>
         <input type="hidden" id="gin-scoring-type" value="points" />
+      </div>
+
+      <!-- Aparece só quando o tipo é MULTIPLICADOR -->
+      <div class="form-field hidden" id="gin-multiplier-field">
+        <label>Valor por unidade (pts)</label>
+        <input id="gin-multiplier-value" type="number" placeholder="Ex: 5 (cada bíblia vale 5 pts)" min="1" />
+        <div class="multiplier-hint">
+          💡 Ex: cada pessoa com a Bíblia vale <strong>5 pts</strong>. Se 20 pessoas levarem, a equipe ganha automaticamente <strong>100 pts</strong>.
+        </div>
       </div>
       <div class="form-field">
         <label>Observações / Dinâmica</label>
@@ -483,6 +493,19 @@
       <select id="score-team"><option value="">— selecione a equipe —</option></select>
       <label>Gincana (opcional)</label>
       <select id="score-gin"><option value="">— nenhuma —</option></select>
+
+      <!-- Aparece só quando a gincana selecionada é tipo MULTIPLICADOR -->
+      <div id="score-multiplier-area" class="hidden">
+        <div class="multiplier-box">
+          <div class="multiplier-box-label" id="score-multiplier-label">✖️ Valor por unidade: 0 pts</div>
+          <label>Quantidade</label>
+          <input id="score-multiplier-qty" type="number" placeholder="Ex: 20" min="0" />
+          <div class="multiplier-result">
+            Total: <span id="score-multiplier-total">0</span> pts
+          </div>
+        </div>
+      </div>
+
       <label>Pontuação</label>
       <div class="quick-pts">
         <button class="qpt" data-v="10">+10</button>

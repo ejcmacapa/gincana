@@ -570,10 +570,33 @@ body.auth-active {
 .gin-see-more { font-size:.67rem; color:var(--accent2); font-weight:700; cursor:pointer; background:none; border:none; padding:0; font-family:'Nunito',sans-serif; }
 
 .scoring-type-toggle { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
-.scoring-btn { background:var(--card2); border:2px solid var(--border); color:var(--muted); border-radius:var(--radius-sm); padding:.65rem .5rem; font-family:'Bebas Neue',sans-serif; font-size:.95rem; letter-spacing:.06em; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:.2rem; transition:background .2s, border-color .2s, color .2s; }
+.scoring-type-toggle-3 { grid-template-columns:1fr 1fr 1fr; }
+.scoring-btn { background:var(--card2); border:2px solid var(--border); color:var(--muted); border-radius:var(--radius-sm); padding:.65rem .4rem; font-family:'Bebas Neue',sans-serif; font-size:.88rem; letter-spacing:.05em; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:.2rem; transition:background .2s, border-color .2s, color .2s; text-align:center; }
 .scoring-btn.active { background:rgba(245,200,66,.12); border-color:var(--gold); color:var(--gold); }
 .scoring-btn[data-type="time"].active { background:rgba(192,38,211,.12); border-color:var(--accent2); color:var(--accent2); }
-.scoring-btn-sub { font-family:'Nunito',sans-serif; font-size:.6rem; font-weight:700; opacity:.7; text-transform:none; letter-spacing:0; }
+.scoring-btn[data-type="multiplier"].active { background:rgba(34,197,94,.12); border-color:var(--green); color:var(--green); }
+.scoring-btn-sub { font-family:'Nunito',sans-serif; font-size:.58rem; font-weight:700; opacity:.7; text-transform:none; letter-spacing:0; line-height:1.2; }
+
+/* Campo de valor multiplicador no cadastro de gincana */
+.multiplier-hint {
+  font-size:.75rem; color:var(--muted); line-height:1.5;
+  background:rgba(34,197,94,.06); border:1px solid rgba(34,197,94,.18);
+  border-radius:var(--radius-sm); padding:.6rem .8rem; margin-top:.4rem;
+}
+.multiplier-hint strong { color:var(--green); }
+
+/* Caixa de cálculo no modal de lançar pontos */
+.multiplier-box {
+  background:rgba(34,197,94,.07); border:1px solid rgba(34,197,94,.25);
+  border-radius:var(--radius-sm); padding:.75rem .85rem;
+  display:flex; flex-direction:column; gap:.5rem; margin-bottom:.3rem;
+}
+.multiplier-box-label { font-size:.78rem; font-weight:900; color:var(--green); }
+.multiplier-box label { font-size:.7rem; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:0; }
+.multiplier-box input { background:var(--card2); border:1px solid var(--border); color:var(--text); border-radius:var(--radius-sm); padding:.6rem .8rem; font-family:'Bebas Neue',sans-serif; font-size:1.2rem; width:100%; text-align:center; }
+.multiplier-box input:focus { outline:none; border-color:var(--green); }
+.multiplier-result { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; color:var(--gold); text-align:center; background:var(--card2); border-radius:var(--radius-sm); padding:.5rem; letter-spacing:.04em; }
+.multiplier-result span { font-size:1.6rem; }
 
 /* ── CALCULADORA ── */
 .calc-type-badge { display:flex; align-items:center; gap:.5rem; background:rgba(245,200,66,.08); border:1px solid rgba(245,200,66,.2); border-radius:var(--radius-sm); padding:.55rem .85rem; font-size:.82rem; font-weight:700; color:var(--gold); }
