@@ -491,7 +491,7 @@ function updateGlobalFilterUI() {
 
 function toggleFilterBarVisibility(tabName) {
   const bar = document.getElementById('global-filter-bar');
-  const hidden = ['equipes', 'gincanas', 'calc', 'adminpanel', 'report', 'calendar'];
+  const hidden = ['equipes', 'gincanas', 'calc', 'adminpanel', 'report', 'calendar', 'sobre'];
   bar.classList.toggle('hidden-filter', hidden.includes(tabName));
 }
 
@@ -1352,7 +1352,7 @@ function renderCalcTab() {
   const sel = document.getElementById('calc-gin-select'), cur = sel.value;
   sel.innerHTML = '<option value="">— escolha a gincana —</option>' +
     gincanas.map(g => {
-      const icon = g.scoring_type === 'time' ? '⏱' : '🏅';
+      const icon = g.scoring_type === 'time' ? '⏱' : g.scoring_type === 'multiplier' ? '✖️' : '🏅';
       return `<option value="${g.id}">${icon} ${escHtml(g.name)}${g.data_gin ? ' — ' + fmtDate(g.data_gin) : ''}</option>`;
     }).join('');
   if (cur && sel.querySelector(`option[value="${cur}"]`)) { sel.value = cur; onCalcGinChange(cur); }
@@ -1368,10 +1368,21 @@ function onCalcGinChange(ginId) {
 
   if (!g) { badge.classList.add('hidden'); area.innerHTML = ''; actions.style.display = 'none'; return; }
 
-  const isTime = g.scoring_type === 'time';
-  badge.className = `calc-type-badge${isTime ? ' time-mode' : ''}`;
+  const isTime       = g.scoring_type === 'time';
+  const isMultiplier = g.scoring_type === 'multiplier';
+  const mv           = Number(g.multiplier_value) || 0;
+
+  if (isTime) {
+    badge.className = 'calc-type-badge time-mode';
+    badge.textContent = '⏱ Modo TEMPO — vence quem for mais rápido';
+  } else if (isMultiplier) {
+    badge.className = 'calc-type-badge multiplier-mode';
+    badge.textContent = `✖️ Modo MULTIPLICADOR — ${mv} pts por unidade/pessoa`;
+  } else {
+    badge.className = 'calc-type-badge';
+    badge.textContent = '🏅 Modo PONTOS — vence quem somar mais';
+  }
   badge.classList.remove('hidden');
-  badge.textContent = isTime ? '⏱ Modo TEMPO — vence quem for mais rápido' : '🏅 Modo PONTOS — vence quem somar mais';
 
   area.innerHTML = teams.length
     ? `<div class="calc-teams-area">${teams.map(t => `
@@ -1385,13 +1396,31 @@ function onCalcGinChange(ginId) {
               <input class="calc-time-inp" data-team="${t.id}" data-part="sec" type="text" inputmode="numeric" placeholder="00" maxlength="2"/>
               <span class="calc-time-dot">:</span>
               <input class="calc-time-inp" data-team="${t.id}" data-part="ms"  type="text" inputmode="numeric" placeholder="00" maxlength="2"/>
-            </div>` : `
+            </div>`
+          : isMultiplier ? `
+            <div class="calc-mult-wrap">
+              <span class="calc-mult-label">${mv} ×</span>
+              <input class="calc-pts-input calc-mult-inp" data-team="${t.id}" type="number" placeholder="Qtd" min="0"/>
+              <span class="calc-mult-total" data-team="${t.id}">= 0 pts</span>
+            </div>`
+          : `
             <input class="calc-pts-input" data-team="${t.id}" type="number" placeholder="Pts" min="0"/>`}
         </div>`).join('')}</div>`
     : `<div class="empty-state">Cadastre equipes primeiro.</div>`;
 
   if (isTime) {
-    area.querySelectorAll('.calc-time-inp').forEach(inp => inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/, '').slice(0, 2); }));
+    area.querySelectorAll('.calc-time-inp').forEach(inp =>
+      inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/, '').slice(0, 2); }));
+  }
+  if (isMultiplier) {
+    area.querySelectorAll('.calc-mult-inp').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const qty   = Number(inp.value) || 0;
+        const total = mv * qty;
+        const totalEl = area.querySelector(`.calc-mult-total[data-team="${inp.dataset.team}"]`);
+        if (totalEl) totalEl.textContent = `= ${total} pts`;
+      });
+    });
   }
   actions.style.display = teams.length ? '' : 'none';
 }
@@ -1405,30 +1434,48 @@ function timeToMs(str) {
 function simulateCalc() {
   const ginId = document.getElementById('calc-gin-select').value, g = ginById(ginId);
   if (!g) return showToast('Selecione uma gincana!', 'error');
-  const isTime = g.scoring_type === 'time';
+
+  const isTime       = g.scoring_type === 'time';
+  const isMultiplier = g.scoring_type === 'multiplier';
+  const mv           = Number(g.multiplier_value) || 1;
+
   const rows = teams.map(t => {
     if (isTime) {
       const min = document.querySelector(`.calc-time-inp[data-team="${t.id}"][data-part="min"]`)?.value || '';
       const sec = document.querySelector(`.calc-time-inp[data-team="${t.id}"][data-part="sec"]`)?.value || '';
       const ms  = document.querySelector(`.calc-time-inp[data-team="${t.id}"][data-part="ms"]`)?.value  || '';
-      const timeStr = (min || sec || ms) ? `${(min || '00').padStart(2, '0')}:${(sec || '00').padStart(2, '0')}:${(ms || '00').padStart(2, '0')}` : null;
+      const timeStr = (min || sec || ms) ? `${(min||'00').padStart(2,'0')}:${(sec||'00').padStart(2,'0')}:${(ms||'00').padStart(2,'0')}` : null;
       return { teamId: t.id, name: t.name, color: t.color, time: timeStr, value: timeToMs(timeStr) };
     } else {
-      const val = Number(document.querySelector(`.calc-pts-input[data-team="${t.id}"]`)?.value || 0);
-      return { teamId: t.id, name: t.name, color: t.color, value: val, time: null };
+      // PONTOS ou MULTIPLICADOR — lê o campo de qty/pts
+      const raw = Number(document.querySelector(`.calc-pts-input[data-team="${t.id}"]`)?.value || 0);
+      const val = isMultiplier ? raw * mv : raw;
+      return { teamId: t.id, name: t.name, color: t.color, value: val, qty: raw, time: null };
     }
   });
+
   const filled = rows.filter(r => isTime ? r.time !== null : r.value > 0);
-  if (!filled.length) return showToast(isTime ? 'Preencha o tempo de pelo menos uma equipe!' : 'Preencha a pontuação!', 'error');
+  if (!filled.length) return showToast(
+    isTime ? 'Preencha o tempo de pelo menos uma equipe!' :
+    isMultiplier ? 'Preencha a quantidade de pelo menos uma equipe!' :
+    'Preencha a pontuação!', 'error');
+
   filled.sort((a, b) => isTime ? a.value - b.value : b.value - a.value);
-  const pts = [100, 80, 60, 40, 30, 20, 10];
-  calcSimResult = filled.map((r, i) => ({ ...r, pts: isTime ? (pts[i] ?? 5) : r.value, pos: i + 1 }));
-  renderCalcResult(isTime);
+
+  if (isMultiplier) {
+    // Modo multiplicador: pontuação = quantidade × valor por unidade (sem distribuição por posição)
+    calcSimResult = filled.map((r, i) => ({ ...r, pts: r.value, pos: i + 1 }));
+  } else {
+    const pts = [100, 80, 60, 40, 30, 20, 10];
+    calcSimResult = filled.map((r, i) => ({ ...r, pts: isTime ? (pts[i] ?? 5) : r.value, pos: i + 1 }));
+  }
+
+  renderCalcResult(isTime, isMultiplier, mv);
   document.getElementById('calc-result').classList.remove('hidden');
   document.getElementById('calc-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function renderCalcResult(isTime) {
+function renderCalcResult(isTime, isMultiplier, mv) {
   const posClass = i => ['gold', 'silver', 'bronze'][i] || 'normal', medals = ['🥇', '🥈', '🥉'];
   document.getElementById('calc-result-list').innerHTML = calcSimResult.map((r, i) => `
     <div class="calc-result-item ${i < 3 ? 'rank-' + (i + 1) : ''}">
@@ -1437,7 +1484,8 @@ function renderCalcResult(isTime) {
       <div class="calc-res-info">
         <div class="calc-res-name">${escHtml(r.name)}</div>
         ${r.time ? `<div class="calc-res-time">⏱ ${r.time}</div>` : ''}
-        ${!isTime ? `<div class="calc-res-time">Bruto: ${r.value}</div>` : ''}
+        ${isMultiplier ? `<div class="calc-res-time">✖️ ${r.qty} × ${mv} pts/un.</div>` : ''}
+        ${!isTime && !isMultiplier ? `<div class="calc-res-time">Bruto: ${r.value}</div>` : ''}
       </div>
       <div class="calc-res-pts">+${r.pts}</div>
     </div>`).join('');
@@ -1653,7 +1701,9 @@ function renderCalendar() {
     const diff    = diffDays(now, evDate);
     const dayNum  = String(evDate.getDate()).padStart(2, '0');
     const monStr  = evDate.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
-    const timeStr = evDate.toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const timeStr   = evDate.toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const weekDay   = evDate.toLocaleString('pt-BR', { weekday: 'long' });
+    const weekDayFmt = weekDay.charAt(0).toUpperCase() + weekDay.slice(1);
     let urgencyBadge = '';
     if (!isPast) {
       if (diff === 0) urgencyBadge = '<span class="ev-badge ev-today">HOJE</span>';
@@ -1667,7 +1717,7 @@ function renderCalendar() {
       </div>
       <div class="cal-event-info">
         <div class="cal-event-title">${escHtml(ev.title)} ${urgencyBadge}</div>
-        ${timeStr    ? `<div class="cal-event-meta">🕐 ${timeStr}</div>` : ''}
+        ${timeStr    ? `<div class="cal-event-meta">🕐 ${weekDayFmt}, ${timeStr}</div>` : `<div class="cal-event-meta">📆 ${weekDayFmt}</div>`}
         ${ev.location    ? `<div class="cal-event-meta">📍 ${escHtml(ev.location)}</div>` : ''}
         ${ev.description ? `<div class="cal-event-desc">${escHtml(ev.description)}</div>` : ''}
       </div>

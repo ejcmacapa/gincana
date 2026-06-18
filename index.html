@@ -174,6 +174,7 @@
     <button class="tab admin-only" data-tab="equipes">👥 Equipes</button>
     <button class="tab admin-only" data-tab="gincanas">🎯 Gincanas</button>
     <button class="tab admin-only" data-tab="adminpanel">🔑 Admin</button>
+    <button class="tab" data-tab="sobre">ℹ️ Sobre</button>
   </nav>
 
   <!-- ══════ HOME ══════ -->
@@ -475,6 +476,63 @@
     <div id="pending-list" class="entity-list"></div>
     <div class="section-title mt-2">ADMINISTRADORES ATIVOS</div>
     <div id="admins-list" class="entity-list"></div>
+  </section>
+
+  <!-- ══════ SOBRE ══════ -->
+  <section id="tab-sobre" class="tab-content hidden">
+    <div class="sobre-hero">
+      <img src="icon-192.png" alt="EJC" class="sobre-logo" />
+      <div class="sobre-title">EJC GINCANA</div>
+      <div class="sobre-sub">Macapá · Amapá</div>
+    </div>
+
+    <div class="sobre-card">
+      <div class="sobre-card-title">📱 Sobre o Aplicativo</div>
+      <p>O <strong>EJC Gincana</strong> é o sistema oficial de pontuação e ranking da Equipe de Jesus Cristo de Macapá. Desenvolvido para tornar a gincana mais dinâmica, transparente e fácil de acompanhar para todos os jovens.</p>
+    </div>
+
+    <div class="sobre-card">
+      <div class="sobre-card-title">🏆 Como funciona o Ranking</div>
+      <p>O ranking é atualizado em tempo real sempre que um administrador lança pontos. As equipes são ordenadas pela <strong>soma total de pontos</strong> acumulados no período selecionado.</p>
+      <ul class="sobre-list">
+        <li>🥇 1º lugar — maior pontuação acumulada</li>
+        <li>⚠️ Punições desconstam pontos da equipe</li>
+        <li>📅 Você pode filtrar por período ou por competição</li>
+      </ul>
+    </div>
+
+    <div class="sobre-card">
+      <div class="sobre-card-title">🎯 Tipos de Pontuação</div>
+      <ul class="sobre-list">
+        <li><strong>🏅 Pontos:</strong> pontuação direta — a equipe recebe o valor lançado</li>
+        <li><strong>⏱ Tempo:</strong> vence quem completa a prova em menos tempo. A calculadora distribui pontos por colocação (1º=100, 2º=80, 3º=60...)</li>
+        <li><strong>✖️ Multiplicador:</strong> pontuação por quantidade — ex: cada Bíblia vale 5 pts. Ao lançar, basta informar a quantidade e o total é calculado automaticamente</li>
+      </ul>
+    </div>
+
+    <div class="sobre-card">
+      <div class="sobre-card-title">👁 Modos de Acesso</div>
+      <ul class="sobre-list">
+        <li><strong>Visitante:</strong> acessa ranking, histórico, agenda e relatórios sem precisar de login — somente leitura</li>
+        <li><strong>Administrador:</strong> pode lançar pontos, criar equipes e gincanas, e usar a calculadora. Precisa de aprovação do super admin</li>
+        <li><strong>Super Admin:</strong> tem acesso total, incluindo aprovar e bloquear usuários</li>
+      </ul>
+    </div>
+
+    <div class="sobre-card">
+      <div class="sobre-card-title">📸 Relatórios para Instagram</div>
+      <p>Na aba <strong>Relatório</strong>, você pode gerar imagens do ranking nos formatos:</p>
+      <ul class="sobre-list">
+        <li>📱 <strong>Stories</strong> (1080×1920) — ideal para Stories e Reels</li>
+        <li>🟫 <strong>Feed</strong> (1080×1080) — post quadrado</li>
+        <li>🖥️ <strong>Slide</strong> (1920×1080) — telão ou projetor</li>
+        <li>📐 <strong>Automático</strong> — exporta exatamente como aparece na tela</li>
+      </ul>
+    </div>
+
+    <div class="sobre-version">
+      EJC Gincana · versão 5.0 · Macapá 🙏
+    </div>
   </section>
 
 </div><!-- /app -->
