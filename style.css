@@ -778,6 +778,74 @@ body.auth-active {
 .event-box { border-top: 3px solid var(--accent); }
 
 /* ════════════════════════════════════════
+   ABA EQUIPES EJC
+════════════════════════════════════════ */
+.ejct-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1rem;
+  margin-bottom: .85rem; display: flex; flex-direction: column; gap: .65rem;
+  animation: slideIn .3s ease;
+}
+.ejct-header {
+  display: flex; align-items: center; gap: .85rem;
+  padding-left: .75rem;
+}
+.ejct-logo {
+  width: 52px; height: 52px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem; flex-shrink: 0;
+}
+.ejct-info    { flex: 1; min-width: 0; }
+.ejct-name    { font-weight: 900; font-size: 1rem; color: var(--text); }
+.ejct-desc    { font-size: .76rem; color: var(--muted); margin-top: .15rem; }
+
+/* Vagas / progresso */
+.ejct-vagas      { display: flex; flex-direction: column; gap: .4rem; }
+.ejct-vagas-row  { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .35rem; }
+.ejct-vaga-item  { font-size: .76rem; font-weight: 700; }
+.ejct-progress-bar {
+  height: 6px; background: var(--card2); border-radius: 99px; overflow: hidden;
+}
+.ejct-progress-fill {
+  height: 100%; border-radius: 99px;
+  transition: width .4s ease;
+}
+
+/* Seções de membros */
+.ejct-section-label {
+  font-size: .68rem; font-weight: 900; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.ejct-members-grid {
+  display: flex; flex-wrap: wrap; gap: .4rem;
+}
+.ejct-member-chip {
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: 99px; padding: .3rem .75rem;
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .78rem; animation: fadeIn .2s ease;
+}
+.ejct-member-chip.coord {
+  background: rgba(245,200,66,.08);
+  border-color: rgba(245,200,66,.3);
+}
+.ejct-member-name  { font-weight: 700; color: var(--text); }
+.ejct-member-role  { font-size: .65rem; color: var(--muted); }
+.ejct-del-member {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: .7rem; padding: 0 .1rem;
+  line-height: 1; transition: color .2s;
+}
+.ejct-del-member:hover { color: var(--red); }
+.ejct-add-member-btn {
+  background: var(--card); border: 1px dashed var(--border);
+  color: var(--muted); border-radius: 99px;
+  padding: .3rem .85rem; font-size: .75rem; font-weight: 700;
+  cursor: pointer; transition: border-color .2s, color .2s;
+}
+.ejct-add-member-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ════════════════════════════════════════
    ABA SOBRE
 ════════════════════════════════════════ */
 .sobre-hero {

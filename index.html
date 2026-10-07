@@ -174,6 +174,7 @@
     <button class="tab admin-only" data-tab="equipes">👥 Equipes</button>
     <button class="tab admin-only" data-tab="gincanas">🎯 Gincanas</button>
     <button class="tab admin-only" data-tab="adminpanel">🔑 Admin</button>
+    <button class="tab" data-tab="ejcteams">🫂 Equipes EJC</button>
     <button class="tab" data-tab="sobre">ℹ️ Sobre</button>
   </nav>
 
@@ -477,6 +478,95 @@
     <div class="section-title mt-2">ADMINISTRADORES ATIVOS</div>
     <div id="admins-list" class="entity-list"></div>
   </section>
+
+  <!-- ══════ EQUIPES EJC ══════ -->
+  <section id="tab-ejcteams" class="tab-content hidden">
+
+    <!-- Painel de cadastro (só admins) -->
+    <div class="admin-only" id="ejcteam-form-wrap">
+      <div class="cadastro-card" id="ejcteam-form-card">
+        <div class="cadastro-card-title" id="ejcteam-form-title">✨ Nova Equipe EJC</div>
+
+        <div class="form-row">
+          <div class="form-field" style="flex:1">
+            <label>Nome da equipe</label>
+            <input id="ejct-name" type="text" placeholder="Ex: Cozinha, High Tech, Garçons" />
+          </div>
+          <div class="form-field" style="width:70px">
+            <label>Emoji / Logo</label>
+            <input id="ejct-emoji" type="text" placeholder="🍳" maxlength="4" style="text-align:center;font-size:1.4rem" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field" style="flex:1">
+            <label>Descrição</label>
+            <input id="ejct-desc" type="text" placeholder="Ex: Responsável pela alimentação" />
+          </div>
+          <div class="form-field color-field">
+            <label>Cor</label>
+            <input id="ejct-color" type="color" value="#7c3aed" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field" style="flex:1">
+            <label>Total de vagas</label>
+            <input id="ejct-vagas" type="number" placeholder="Ex: 20" min="0" />
+          </div>
+          <div class="form-field" style="flex:1">
+            <label>Ordem de exibição</label>
+            <input id="ejct-ordem" type="number" placeholder="1, 2, 3..." min="0" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-ghost" id="btn-ejct-cancel" style="display:none">Cancelar</button>
+          <button class="btn-primary full" id="btn-ejct-save">+ Adicionar Equipe EJC</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de equipes -->
+    <div class="section-title mt-2">
+      EQUIPES ORGANIZADORAS
+      <span id="ejcteams-count" class="count-badge"></span>
+    </div>
+    <div id="ejcteams-list"></div>
+
+    <!-- FAB admin -->
+    <div class="fab-area admin-only">
+      <button class="fab-btn primary" id="fab-add-member">👤 Novo Membro</button>
+    </div>
+
+  </section>
+
+  <!-- Modal: adicionar/editar membro -->
+  <div id="modal-ejc-member" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="modal-member-title">👤 Novo Membro</span>
+        <button class="close-btn" data-close="modal-ejc-member">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="member-editing-id" />
+        <label>Equipe</label>
+        <select id="member-team-select"></select>
+        <label>Nome do membro</label>
+        <input id="member-name" type="text" placeholder="Ex: João Silva" />
+        <label>Cargo / Função</label>
+        <input id="member-role" type="text" placeholder="Ex: Membro, Sub-coordenador" />
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+          <input id="member-is-coord" type="checkbox" style="width:auto" />
+          É Coordenador desta equipe?
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" data-close="modal-ejc-member">Cancelar</button>
+        <button class="btn-save" id="btn-save-member">Salvar 👤</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ══════ SOBRE ══════ -->
   <section id="tab-sobre" class="tab-content hidden">

@@ -22,6 +22,9 @@ let profiles = [];  // { id, email, name, username, role, created_at }
 let events   = [];  // { id, title, description, event_date, location, created_by }
 
 let calFilterMonth  = null;   // { year, month } — filtro da agenda
+let ejcTeams        = [];     // equipes organizadoras do EJC
+let ejcMembers      = [];     // membros das equipes organizadoras
+let editingEjcTeamId = null;
 let currentUser     = null;   // sessão Supabase Auth
 let currentProfile  = null;   // { id, email, name, username, role }
 let isGuest         = false;  // modo visitante (somente leitura)
@@ -211,7 +214,7 @@ async function launchApp() {
   hideAllScreens();
 
   try {
-    await Promise.all([loadTeams(), loadEntries(), loadGincanas(), loadProfiles(), loadEvents()]);
+    await Promise.all([loadTeams(), loadEntries(), loadGincanas(), loadProfiles(), loadEvents(), loadEjcTeams(), loadEjcMembers()]);
   } catch (e) {
     showToast('Erro ao carregar dados. Verifique a conexão.', 'error');
   }
@@ -232,7 +235,7 @@ async function boot_guest() {
   hideAllScreens();
 
   try {
-    await Promise.all([loadTeams(), loadEntries(), loadGincanas(), loadEvents()]);
+    await Promise.all([loadTeams(), loadEntries(), loadGincanas(), loadEvents(), loadEjcTeams(), loadEjcMembers()]);
   } catch (e) {
     showToast('Erro ao carregar dados. Verifique a conexão.', 'error');
   }
@@ -378,6 +381,20 @@ async function loadProfiles() {
     profiles = data || [];
   } catch (e) { /* silencia — não crítico */ }
 }
+async function loadEjcTeams() {
+  try {
+    const { data, error } = await sb.from('ejc_teams').select('*').order('ordem').order('name');
+    if (error) throw error;
+    ejcTeams = data || [];
+  } catch (e) { /* silencia — tabela pode não existir ainda */ }
+}
+async function loadEjcMembers() {
+  try {
+    const { data, error } = await sb.from('ejc_members').select('*').order('is_coordinator', { ascending: false }).order('name');
+    if (error) throw error;
+    ejcMembers = data || [];
+  } catch (e) { /* silencia */ }
+}
 async function loadEvents() {
   try {
     const { data, error } = await sb.from('events').select('*').order('event_date', { ascending: true });
@@ -404,6 +421,12 @@ function subscribeRealtime() {
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, async () => {
       await loadProfiles(); if (currentProfile?.role === 'superadmin') renderAdminPanel();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ejc_teams' }, async () => {
+      await loadEjcTeams(); renderEjcTeamsTab();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ejc_members' }, async () => {
+      await loadEjcMembers(); renderEjcTeamsTab();
     })
     .subscribe();
 }
@@ -471,6 +494,7 @@ function renderAll() {
   renderRanking();
   renderHistory();
   renderCalendar();
+  renderEjcTeamsTab();
   renderEquipesTab();
   renderGincanasTab();
   renderCalcTab();
@@ -491,7 +515,7 @@ function updateGlobalFilterUI() {
 
 function toggleFilterBarVisibility(tabName) {
   const bar = document.getElementById('global-filter-bar');
-  const hidden = ['equipes', 'gincanas', 'calc', 'adminpanel', 'report', 'calendar', 'sobre'];
+  const hidden = ['equipes', 'gincanas', 'calc', 'adminpanel', 'report', 'calendar', 'sobre', 'ejcteams'];
   bar.classList.toggle('hidden-filter', hidden.includes(tabName));
 }
 
@@ -1906,6 +1930,265 @@ function showToast(msg, type = '') {
 }
 
 // ═══════════════════════════════════════════════════
+//   EQUIPES EJC — renderização e CRUD
+// ═══════════════════════════════════════════════════
+
+function renderEjcTeamsTab() {
+  const list  = document.getElementById('ejcteams-list');
+  const count = document.getElementById('ejcteams-count');
+  if (!list) return;
+  count.textContent = ejcTeams.length || '';
+
+  if (!ejcTeams.length) {
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">🫂</span>Nenhuma equipe cadastrada ainda.</div>`;
+    return;
+  }
+
+  const isAdmin = canWrite();
+
+  list.innerHTML = ejcTeams.map(team => {
+    const members      = ejcMembers.filter(m => m.ejc_team_id === team.id);
+    const coordinators = members.filter(m => m.is_coordinator);
+    const regular      = members.filter(m => !m.is_coordinator);
+    const vagasUsadas  = members.length;
+    const vagasTotal   = team.total_vagas || 0;
+    const vagasLivres  = Math.max(0, vagasTotal - vagasUsadas);
+    const pct          = vagasTotal > 0 ? Math.min(100, Math.round((vagasUsadas / vagasTotal) * 100)) : 0;
+
+    return `
+    <div class="ejct-card">
+      <!-- Cabeçalho da equipe -->
+      <div class="ejct-header" style="border-left:4px solid ${team.color||'#7c3aed'}">
+        <div class="ejct-logo" style="background:${team.color||'#7c3aed'}22;border:2px solid ${team.color||'#7c3aed'}44">
+          ${team.logo_emoji || '🫂'}
+        </div>
+        <div class="ejct-info">
+          <div class="ejct-name">${escHtml(team.name)}</div>
+          ${team.description ? `<div class="ejct-desc">${escHtml(team.description)}</div>` : ''}
+        </div>
+        ${isAdmin ? `
+        <div class="entity-actions" style="align-self:flex-start">
+          <button class="btn-edit"   data-edit-ejct="${team.id}">✏️</button>
+          <button class="btn-delete" data-del-ejct="${team.id}">🗑</button>
+        </div>` : ''}
+      </div>
+
+      <!-- Vagas / progresso -->
+      ${vagasTotal > 0 ? `
+      <div class="ejct-vagas">
+        <div class="ejct-vagas-row">
+          <span class="ejct-vaga-item vaga-total">👥 ${vagasUsadas}/${vagasTotal} membros</span>
+          <span class="ejct-vaga-item vaga-livre" style="color:${vagasLivres > 0 ? 'var(--green)' : 'var(--red)'}">
+            ${vagasLivres > 0 ? `✅ ${vagasLivres} vagas disponíveis` : '🔴 Sem vagas'}
+          </span>
+        </div>
+        <div class="ejct-progress-bar">
+          <div class="ejct-progress-fill" style="width:${pct}%;background:${team.color||'#7c3aed'}"></div>
+        </div>
+      </div>` : ''}
+
+      <!-- Coordenadores -->
+      ${coordinators.length ? `
+      <div class="ejct-section-label">⭐ Coordenação</div>
+      <div class="ejct-members-grid">
+        ${coordinators.map(m => `
+          <div class="ejct-member-chip coord" style="border-color:${team.color||'#7c3aed'}44">
+            <span class="ejct-member-name">${escHtml(m.name)}</span>
+            ${m.role ? `<span class="ejct-member-role">${escHtml(m.role)}</span>` : ''}
+            ${isAdmin ? `<button class="ejct-del-member" data-del-member="${m.id}" title="Remover">✕</button>` : ''}
+          </div>`).join('')}
+        ${isAdmin ? `
+        <button class="ejct-add-member-btn" data-team-id="${team.id}">+ Membro</button>` : ''}
+      </div>` : `
+      ${isAdmin ? `
+      <div class="ejct-section-label">⭐ Coordenação</div>
+      <div class="ejct-members-grid">
+        <button class="ejct-add-member-btn" data-team-id="${team.id}">+ Membro</button>
+      </div>` : ''}`}
+
+      <!-- Membros regulares -->
+      ${regular.length ? `
+      <div class="ejct-section-label">👤 Membros (${regular.length})</div>
+      <div class="ejct-members-grid">
+        ${regular.map(m => `
+          <div class="ejct-member-chip">
+            <span class="ejct-member-name">${escHtml(m.name)}</span>
+            ${m.role ? `<span class="ejct-member-role">${escHtml(m.role)}</span>` : ''}
+            ${isAdmin ? `<button class="ejct-del-member" data-del-member="${m.id}" title="Remover">✕</button>` : ''}
+          </div>`).join('')}
+        ${isAdmin ? `
+        <button class="ejct-add-member-btn" data-team-id="${team.id}">+ Membro</button>` : ''}
+      </div>` : `
+      ${!coordinators.length && isAdmin ? '' : regular.length === 0 && isAdmin ? `
+      <div class="ejct-section-label">👤 Membros</div>
+      <div class="ejct-members-grid">
+        <button class="ejct-add-member-btn" data-team-id="${team.id}">+ Membro</button>
+      </div>` : ''}`}
+
+    </div>`;
+  }).join('');
+
+  // Bind botões
+  if (isAdmin) {
+    list.querySelectorAll('[data-edit-ejct]').forEach(b => b.addEventListener('click', () => startEditEjcTeam(b.dataset.editEjct)));
+    list.querySelectorAll('[data-del-ejct]').forEach(b => b.addEventListener('click', () => confirmDeleteEjcTeam(b.dataset.delEjct)));
+    list.querySelectorAll('[data-del-member]').forEach(b => b.addEventListener('click', () => deleteMember(b.dataset.delMember)));
+    list.querySelectorAll('[data-team-id]').forEach(b => b.addEventListener('click', () => openMemberModal(null, b.dataset.teamId)));
+  }
+}
+
+// ── CRUD Equipes EJC ───────────────────────────────
+function startEditEjcTeam(id) {
+  const t = ejcTeams.find(x => x.id === id); if (!t) return;
+  editingEjcTeamId = id;
+  document.getElementById('ejct-name').value  = t.name;
+  document.getElementById('ejct-emoji').value = t.logo_emoji || '';
+  document.getElementById('ejct-desc').value  = t.description || '';
+  document.getElementById('ejct-color').value = t.color || '#7c3aed';
+  document.getElementById('ejct-vagas').value = t.total_vagas || '';
+  document.getElementById('ejct-ordem').value = t.ordem || '';
+  document.getElementById('ejcteam-form-title').textContent = '✏️ Editar Equipe EJC';
+  document.getElementById('ejcteam-form-card').classList.add('editing');
+  document.getElementById('btn-ejct-save').textContent = 'Salvar Alterações';
+  document.getElementById('btn-ejct-save').classList.add('blue-mode');
+  document.getElementById('btn-ejct-cancel').style.display = '';
+  document.getElementById('ejcteam-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelEditEjcTeam() {
+  editingEjcTeamId = null;
+  document.getElementById('ejct-name').value  = '';
+  document.getElementById('ejct-emoji').value = '';
+  document.getElementById('ejct-desc').value  = '';
+  document.getElementById('ejct-color').value = '#7c3aed';
+  document.getElementById('ejct-vagas').value = '';
+  document.getElementById('ejct-ordem').value = '';
+  document.getElementById('ejcteam-form-title').textContent = '✨ Nova Equipe EJC';
+  document.getElementById('ejcteam-form-card').classList.remove('editing');
+  document.getElementById('btn-ejct-save').textContent = '+ Adicionar Equipe EJC';
+  document.getElementById('btn-ejct-save').classList.remove('blue-mode');
+  document.getElementById('btn-ejct-cancel').style.display = 'none';
+}
+
+async function saveEjcTeam() {
+  if (!requireAdmin()) return;
+  const name  = document.getElementById('ejct-name').value.trim();
+  const emoji = document.getElementById('ejct-emoji').value.trim();
+  const desc  = document.getElementById('ejct-desc').value.trim();
+  const color = document.getElementById('ejct-color').value;
+  const vagas = document.getElementById('ejct-vagas').value;
+  const ordem = document.getElementById('ejct-ordem').value;
+  if (!name) return showToast('Digite o nome da equipe!', 'error');
+  const payload = {
+    name, logo_emoji: emoji || null, description: desc || null,
+    color, total_vagas: vagas ? Number(vagas) : 0,
+    ordem: ordem ? Number(ordem) : 0
+  };
+  try {
+    if (editingEjcTeamId) {
+      const { error } = await sb.from('ejc_teams').update(payload).eq('id', editingEjcTeamId);
+      if (error) throw error;
+      showToast(`"${name}" atualizada! ✅`, 'success');
+      cancelEditEjcTeam();
+    } else {
+      const { error } = await sb.from('ejc_teams').insert(payload);
+      if (error) throw error;
+      showToast(`Equipe "${name}" criada! 🫂`, 'success');
+      cancelEditEjcTeam();
+    }
+    await loadEjcTeams(); renderEjcTeamsTab();
+  } catch (e) { showToast('Erro: ' + (e.message || 'falha ao salvar'), 'error'); }
+}
+
+function confirmDeleteEjcTeam(id) {
+  if (!requireAdmin()) return;
+  const t = ejcTeams.find(x => x.id === id); if (!t) return;
+  const n = ejcMembers.filter(m => m.ejc_team_id === id).length;
+  document.getElementById('confirm-title').textContent = 'Excluir Equipe EJC';
+  document.getElementById('confirm-message').innerHTML =
+    `Excluir a equipe <strong>${escHtml(t.name)}</strong>?` +
+    (n > 0 ? `<br><br>⚠️ Os <strong>${n} membros</strong> vinculados também serão removidos.` : '');
+  confirmCallback = async () => {
+    try {
+      const { error } = await sb.from('ejc_teams').delete().eq('id', id);
+      if (error) throw error;
+      showToast('Equipe excluída.', 'info');
+      await Promise.all([loadEjcTeams(), loadEjcMembers()]);
+      renderEjcTeamsTab();
+    } catch (e) { showToast('Erro: ' + (e.message || 'falha ao excluir'), 'error'); }
+  };
+  openModal('modal-confirm');
+}
+
+// ── CRUD Membros ───────────────────────────────────
+function openMemberModal(editId, presetTeamId) {
+  if (!requireAdmin()) return;
+  document.getElementById('member-editing-id').value = editId || '';
+  document.getElementById('member-name').value       = '';
+  document.getElementById('member-role').value       = '';
+  document.getElementById('member-is-coord').checked = false;
+  document.getElementById('modal-member-title').textContent = editId ? '✏️ Editar Membro' : '👤 Novo Membro';
+
+  // Popula select de equipes
+  const sel = document.getElementById('member-team-select');
+  sel.innerHTML = ejcTeams.map(t =>
+    `<option value="${t.id}">${t.logo_emoji||'🫂'} ${escHtml(t.name)}</option>`
+  ).join('');
+  if (presetTeamId) sel.value = presetTeamId;
+
+  if (editId) {
+    const m = ejcMembers.find(x => x.id === editId); if (!m) return;
+    sel.value = m.ejc_team_id;
+    document.getElementById('member-name').value       = m.name;
+    document.getElementById('member-role').value       = m.role || '';
+    document.getElementById('member-is-coord').checked = !!m.is_coordinator;
+  }
+  openModal('modal-ejc-member');
+}
+
+async function saveMember() {
+  if (!requireAdmin()) return;
+  const editId     = document.getElementById('member-editing-id').value;
+  const teamId     = document.getElementById('member-team-select').value;
+  const name       = document.getElementById('member-name').value.trim();
+  const role       = document.getElementById('member-role').value.trim();
+  const isCoord    = document.getElementById('member-is-coord').checked;
+  if (!teamId) return showToast('Selecione a equipe!', 'error');
+  if (!name)   return showToast('Digite o nome do membro!', 'error');
+  const payload = { ejc_team_id: teamId, name, role: role || null, is_coordinator: isCoord };
+  try {
+    if (editId) {
+      const { error } = await sb.from('ejc_members').update(payload).eq('id', editId);
+      if (error) throw error;
+      showToast('Membro atualizado! ✅', 'success');
+    } else {
+      const { error } = await sb.from('ejc_members').insert(payload);
+      if (error) throw error;
+      showToast(`${name} adicionado(a)! 👤`, 'success');
+    }
+    closeModal('modal-ejc-member');
+    await loadEjcMembers(); renderEjcTeamsTab();
+  } catch (e) { showToast('Erro: ' + (e.message || 'falha ao salvar'), 'error'); }
+}
+
+async function deleteMember(id) {
+  if (!requireAdmin()) return;
+  const m = ejcMembers.find(x => x.id === id); if (!m) return;
+  document.getElementById('confirm-title').textContent = 'Remover Membro';
+  document.getElementById('confirm-message').innerHTML =
+    `Remover <strong>${escHtml(m.name)}</strong> da equipe?`;
+  confirmCallback = async () => {
+    try {
+      const { error } = await sb.from('ejc_members').delete().eq('id', id);
+      if (error) throw error;
+      showToast('Membro removido.', 'info');
+      await loadEjcMembers(); renderEjcTeamsTab();
+    } catch (e) { showToast('Erro: ' + (e.message || 'falha ao remover'), 'error'); }
+  };
+  openModal('modal-confirm');
+}
+
+// ═══════════════════════════════════════════════════
 //   DOM — EVENTOS / LISTENERS
 // ═══════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
@@ -2181,6 +2464,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (from > to)    return showToast('A data inicial deve ser anterior à final!', 'error');
     renderReport();
   });
+
+  // Equipes EJC
+  document.getElementById('btn-ejct-save')?.addEventListener('click', saveEjcTeam);
+  document.getElementById('btn-ejct-cancel')?.addEventListener('click', cancelEditEjcTeam);
+  document.getElementById('ejct-name')?.addEventListener('keydown', e => { if (e.key === 'Enter') saveEjcTeam(); });
+  document.getElementById('fab-add-member')?.addEventListener('click', () => openMemberModal(null, null));
+  document.getElementById('btn-save-member')?.addEventListener('click', saveMember);
 
   // Calendário
   document.getElementById('fab-new-event')?.addEventListener('click', () => openEventModal(null));
