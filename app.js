@@ -124,26 +124,6 @@ async function boot() {
 async function resolveUserRole() {
   const email = currentUser.email;
 
-  if (SUPER_ADMINS.includes(email)) {
-    try {
-      const { data: p } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-      currentProfile = {
-        id: currentUser.id, email,
-        name:     p?.name     || email,
-        username: p?.username || '',
-        role:     'superadmin'
-      };
-      await sb.from('profiles').upsert({
-        id: currentUser.id, email,
-        name: currentProfile.name, username: currentProfile.username, role: 'superadmin'
-      }, { onConflict: 'id' });
-    } catch (_) {
-      currentProfile = { id: currentUser.id, email, name: email, username: '', role: 'superadmin' };
-    }
-    await launchApp();
-    return;
-  }
-
   try {
     const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
 
@@ -160,6 +140,7 @@ async function resolveUserRole() {
 
     currentProfile = profile;
 
+    if (!['superadmin','admin','user','pending','blocked'].includes(profile.role)) { hideSplash(); showPendingScreen(); return; }
     if (profile.role === 'pending')  { hideSplash(); showPendingScreen(); watchPendingProfile(); return; }
     if (profile.role === 'blocked')  {
       hideSplash(); showAuthScreen();
@@ -186,7 +167,7 @@ function watchPendingProfile() {
         .select('role, name, username').eq('id', currentUser.id).single();
       if (!profile) return;
 
-      if (profile.role === 'admin' || profile.role === 'superadmin') {
+      if (['admin', 'superadmin', 'user'].includes(profile.role)) {
         clearInterval(pendingWatcher); pendingWatcher = null;
         const { data: full } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
         currentProfile = full || { ...profile, id: currentUser.id, email: currentUser.email };
@@ -274,7 +255,8 @@ function applyRoleUI() {
   const badge = document.getElementById('user-badge');
   if (isGuest) { badge.textContent = '👁 VISITANTE'; badge.className = 'user-badge visitor'; }
   else if (role === 'superadmin') { badge.textContent = '⭐ SUPER ADMIN'; badge.className = 'user-badge superadmin'; }
-  else { badge.textContent = '🔑 ADMIN'; badge.className = 'user-badge admin'; }
+  else if (role === 'admin') { badge.textContent = '🔑 ADMIN'; badge.className = 'user-badge admin'; }
+  else { badge.textContent = '👤 USUÁRIO COMUM'; badge.className = 'user-badge visitor'; }
   const adminTab = document.querySelector('[data-tab="adminpanel"]');
   if (adminTab) adminTab.style.display = role === 'superadmin' ? '' : 'none';
 }
@@ -491,7 +473,7 @@ function updateGlobalFilterUI() {
 
 function toggleFilterBarVisibility(tabName) {
   const bar = document.getElementById('global-filter-bar');
-  const hidden = ['equipes', 'gincanas', 'calc', 'adminpanel', 'report', 'calendar', 'sobre'];
+  const hidden = ['equipes', 'equipes-ejc', 'gincanas', 'calc', 'adminpanel', 'report', 'calendar', 'sobre'];
   bar.classList.toggle('hidden-filter', hidden.includes(tabName));
 }
 
@@ -1017,23 +999,29 @@ async function exportPDF() {
 // ═══════════════════════════════════════════════════
 async function loadProfilesFull() { await loadProfiles(); }
 
-async function approveUser(id) {
+async function approveUser(id, role) {
+  if (currentProfile?.role !== 'superadmin') return showToast('Apenas SUPERADMIN pode aprovar.', 'error');
+  if (!['user','admin','superadmin'].includes(role)) return showToast('Perfil inválido.', 'error');
+  if (role === 'superadmin' && !confirm('ATENÇÃO: este usuário terá controle completo, inclusive para gerenciar outros administradores. Confirmar?')) return;
   try {
-    await sb.from('profiles').update({ role: 'admin' }).eq('id', id);
+    const { error } = await sb.from('profiles').update({ role }).eq('id', id).eq('role', 'pending');
+    if (error) throw error;
     await loadProfiles(); renderAdminPanel();
-    showToast('Usuário aprovado como Admin! ✅', 'success');
-  } catch (e) { showToast('Erro ao aprovar usuário.', 'error'); }
+    showToast('Cadastro aprovado! Perfil: ' + role, 'success');
+  } catch (e) { showToast('Erro ao aprovar: ' + e.message, 'error'); }
 }
 async function blockUser(id) {
   try {
-    await sb.from('profiles').update({ role: 'blocked' }).eq('id', id);
+    const { error } = await sb.from('profiles').update({ role: 'blocked' }).eq('id', id);
+    if (error) throw error;
     await loadProfiles(); renderAdminPanel();
     showToast('Usuário bloqueado.', 'info');
   } catch (e) { showToast('Erro ao bloquear usuário.', 'error'); }
 }
 async function revokeAdmin(id) {
   try {
-    await sb.from('profiles').update({ role: 'pending' }).eq('id', id);
+    const { error } = await sb.from('profiles').update({ role: 'pending' }).eq('id', id);
+    if (error) throw error;
     await loadProfiles(); renderAdminPanel();
     showToast('Acesso revogado.', 'info');
   } catch (e) { showToast('Erro ao revogar acesso.', 'error'); }
@@ -1042,7 +1030,7 @@ async function revokeAdmin(id) {
 function renderAdminPanel() {
   if (!Array.isArray(profiles)) return;
   const pending = profiles.filter(p => p.role === 'pending');
-  const admins  = profiles.filter(p => ['admin', 'superadmin'].includes(p.role));
+  const admins  = profiles.filter(p => ['admin', 'superadmin', 'user'].includes(p.role));
   const pendCount = document.getElementById('pending-count');
   if (pendCount) pendCount.textContent = pending.length || '';
 
@@ -1058,11 +1046,12 @@ function renderAdminPanel() {
           </div>
           <span class="admin-user-role role-pending">PENDENTE</span>
           <div class="admin-user-actions">
+            <select class="approval-role" data-role-for="${p.id}" aria-label="Perfil para aprovação"><option value="user">Usuário comum (leitura)</option><option value="admin">Admin</option><option value="superadmin">Superadmin</option></select>
             <button class="btn-approve" data-approve="${p.id}">✅ Aprovar</button>
             <button class="btn-block"   data-block="${p.id}">🚫</button>
           </div>
         </div>`).join('');
-    pendList.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', () => approveUser(b.dataset.approve)));
+    pendList.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', () => approveUser(b.dataset.approve, pendList.querySelector('[data-role-for=\"' + b.dataset.approve + '\"]')?.value || 'user')));
     pendList.querySelectorAll('[data-block]').forEach(b => b.addEventListener('click', () => blockUser(b.dataset.block)));
   }
 
@@ -1075,9 +1064,9 @@ function renderAdminPanel() {
           <div class="admin-user-email">${escHtml(p.email)}</div>
         </div>
         <span class="admin-user-role ${p.role === 'superadmin' ? 'role-superadmin' : 'role-admin'}">
-          ${p.role === 'superadmin' ? 'SUPER ADMIN' : 'ADMIN'}
+          ${p.role === 'superadmin' ? 'SUPER ADMIN' : p.role === 'user' ? 'USUÁRIO COMUM' : 'ADMIN'}
         </span>
-        ${p.role !== 'superadmin' ? `<div class="admin-user-actions"><button class="btn-block" data-revoke="${p.id}" title="Revogar">↩️</button></div>` : ''}
+        ${p.id !== currentProfile?.id ? `<div class="admin-user-actions"><button class="btn-block" data-revoke="${p.id}" title="Revogar">↩️</button></div>` : ''}
       </div>`).join('');
     adminList.querySelectorAll('[data-revoke]').forEach(b => b.addEventListener('click', () => revokeAdmin(b.dataset.revoke)));
   }

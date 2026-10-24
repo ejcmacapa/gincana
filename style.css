@@ -836,3 +836,13 @@ body.auth-active {
   .modal-box { border-radius:var(--radius); margin-bottom:1rem; }
   .auth-card { padding:2rem; }
 }
+
+/* Equipes EJC */
+.ejc-wrap{padding:16px;max-width:1100px;margin:auto;color:var(--text)}.ejc-wrap h2{margin-bottom:6px}.ejc-wrap>p{opacity:.8;margin-bottom:18px}.ejc-panel{border:1px solid var(--border);border-radius:14px;padding:18px;margin:14px 0;background:var(--card,#1d1030)}.ejc-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:14px 0}.ejc-fields label{display:flex;flex-direction:column;gap:7px}.ejc-fields input,.ejc-member-form input,.ejc-member-form select{padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg,#150822);color:var(--text);width:100%;min-width:0}.ejc-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.ejc-actions button,.ejc-member-form button{cursor:pointer;padding:9px 14px;border-radius:8px}.ejc-summary{font-weight:700;padding:12px 0}.ejc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px}.ejc-team{margin:0}.ejc-team-header{display:flex;justify-content:space-between;align-items:center;gap:12px}.ejc-team-header h3{margin:0}.ejc-status{font-size:.8rem;white-space:nowrap}.ejc-stat{margin:14px 0;font-size:.9rem}.ejc-track{height:8px;background:#433653;border-radius:99px;overflow:hidden;margin-top:6px}.ejc-track span{display:block;height:100%;background:#facc15}.ejc-members{list-style:none;padding:0}.ejc-members li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border);padding:7px 0}.ejc-members button{background:none;color:#fca5a5;border:0;cursor:pointer}.ejc-member-form{display:grid;grid-template-columns:1fr 130px auto;gap:6px;margin-top:15px}.ejc-error{color:#fca5a5;padding:8px}.ejc-ok{color:#86efac;padding:8px}@media(max-width:540px){.ejc-member-form{grid-template-columns:1fr 1fr}.ejc-member-form input{grid-column:1/-1}}
+
+/* Destaque da coordenação e botões de exportação */
+.ejc-members li.ejc-coordinator{background:rgba(250,204,21,.10);border-left:3px solid #facc15;padding:9px;border-radius:7px;font-weight:700}.ejc-members li.ejc-coordinator small{color:#facc15;font-weight:700}.ejc-export-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.ejc-export-actions button{background:var(--card,#1d1030);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:10px 14px;cursor:pointer}.ejc-export-actions button:hover{border-color:#facc15}
+
+/* v3: acesso de leitura e seleção de perfil */
+body:not(.is-admin) .ejc-write-only { display:none!important; }
+.approval-role { background:#1e1033;color:#fff;border:1px solid #a177c0;border-radius:7px;padding:8px;max-width:195px; }
