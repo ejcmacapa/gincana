@@ -2,12 +2,14 @@
    EJC GINCANA — sw.js (Service Worker)
 ═══════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'ejc-gincana-v1';
+const CACHE_NAME = 'ejc-gincana-v4';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './equipes-ejc.js',
+  './logo-ejc.png',
   './manifest.json',
   'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'

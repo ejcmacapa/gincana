@@ -187,6 +187,8 @@
         <h3 id="ejc-form-title">Cadastrar equipe</h3>
         <div class="ejc-fields">
           <label>Nome da equipe<input id="ejc-name" required maxlength="100" placeholder="Ex.: Garçons, Mídia, Cozinha"></label>
+          <label>Logo da equipe (PNG, JPG ou WebP, até 2 MB)<input id="ejc-logo" type="file" accept="image/png,image/jpeg,image/webp"></label>
+          <label class="ejc-logo-remove"><input id="ejc-remove-logo" type="checkbox"> Remover logo atual ao salvar</label>
           <label>Vagas para coordenadores<input id="ejc-coord-limit" type="number" min="0" max="200" value="2" required></label>
           <label>Vagas para homens<input id="ejc-men-limit" type="number" min="0" max="500" value="5" required></label>
           <label>Vagas para mulheres<input id="ejc-women-limit" type="number" min="0" max="500" value="5" required></label>

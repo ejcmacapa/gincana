@@ -846,3 +846,10 @@ body.auth-active {
 /* v3: acesso de leitura e seleção de perfil */
 body:not(.is-admin) .ejc-write-only { display:none!important; }
 .approval-role { background:#1e1033;color:#fff;border:1px solid #a177c0;border-radius:7px;padding:8px;max-width:195px; }
+
+/* Equipes EJC — logos */
+.ejc-team-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ejc-team-header h3{flex:1;min-width:100px}
+.ejc-logo{width:48px;height:48px;object-fit:contain;flex-shrink:0;border-radius:8px;background:#fff;padding:3px}
+.ejc-logo-remove{font-size:13px;display:flex;align-items:center;gap:6px}
+.ejc-logo-remove input{width:auto!important}
