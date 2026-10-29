@@ -18,6 +18,62 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Formulário Equipes EJC: campos de vagas e logo em linhas separadas. */
+    #ejc-team-form .ejc-fields-organized {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      align-items: end;
+    }
+    #ejc-team-form .ejc-fields-organized > label { min-width: 0; }
+    #ejc-team-form .ejc-fields-organized input { width: 100%; min-width: 0; box-sizing: border-box; }
+    #ejc-team-form .ejc-logo-section {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 12px 24px;
+      margin-top: 18px;
+      margin-bottom: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border, #493360);
+    }
+    #ejc-team-form .ejc-logo-upload {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1 1 280px;
+      min-width: 0;
+    }
+    #ejc-team-form .ejc-logo-upload small { font-size: .78em; font-weight: 400; opacity: .8; }
+    #ejc-team-form #ejc-logo { width: 100%; max-width: 420px; box-sizing: border-box; }
+    #ejc-team-form .ejc-logo-remove-organized {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 9px;
+      flex: 0 1 auto;
+      min-height: 42px;
+      cursor: pointer;
+      white-space: normal;
+    }
+    #ejc-team-form .ejc-logo-remove-organized input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      margin: 0;
+      flex: 0 0 17px;
+    }
+    @media (max-width: 850px) {
+      #ejc-team-form .ejc-fields-organized { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      #ejc-team-form .ejc-fields-organized { grid-template-columns: minmax(0, 1fr); }
+      #ejc-team-form .ejc-logo-section { align-items: stretch; }
+      #ejc-team-form .ejc-logo-remove-organized { min-height: 28px; }
+    }
+  </style>
+
 </head>
 <body>
 
@@ -185,13 +241,21 @@
       <div id="ejc-feedback" role="status"></div>
       <form id="ejc-team-form" class="ejc-panel">
         <h3 id="ejc-form-title">Cadastrar equipe</h3>
-        <div class="ejc-fields">
+        <div class="ejc-fields ejc-fields-organized">
           <label>Nome da equipe<input id="ejc-name" required maxlength="100" placeholder="Ex.: Garçons, Mídia, Cozinha"></label>
-          <label>Logo da equipe (PNG, JPG ou WebP, até 2 MB)<input id="ejc-logo" type="file" accept="image/png,image/jpeg,image/webp"></label>
-          <label class="ejc-logo-remove"><input id="ejc-remove-logo" type="checkbox"> Remover logo atual ao salvar</label>
           <label>Vagas para coordenadores<input id="ejc-coord-limit" type="number" min="0" max="200" value="2" required></label>
           <label>Vagas para homens<input id="ejc-men-limit" type="number" min="0" max="500" value="5" required></label>
           <label>Vagas para mulheres<input id="ejc-women-limit" type="number" min="0" max="500" value="5" required></label>
+        </div>
+        <div class="ejc-logo-section">
+          <label class="ejc-logo-upload" for="ejc-logo">
+            <span>Logo da equipe <small>(PNG, JPG ou WebP, até 2 MB)</small></span>
+            <input id="ejc-logo" type="file" accept="image/png,image/jpeg,image/webp">
+          </label>
+          <label class="ejc-logo-remove ejc-logo-remove-organized" for="ejc-remove-logo">
+            <input id="ejc-remove-logo" type="checkbox">
+            <span>Remover logo atual ao salvar</span>
+          </label>
         </div>
         <div class="ejc-actions"><button type="submit" class="btn-save">Salvar equipe</button><button type="button" id="ejc-cancel" class="btn-cancel" hidden>Cancelar edição</button></div>
       </form>
@@ -200,6 +264,8 @@
       <div id="ejc-teams-list" class="ejc-grid"></div>
     </div>
   </section>
+
+
 
   <!-- ══════ HOME ══════ -->
   <section id="tab-home" class="tab-content active">

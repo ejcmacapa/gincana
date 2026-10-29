@@ -3,6 +3,8 @@
   'use strict';
   let groups = [], members = [], editingId = null, channel = null;
   const BUCKET='ejc-team-logos';
+  let teamSearch = '';
+  const normalizeSearch = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
   const $ = id => document.getElementById(id);
   const safe = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const authorized = () => typeof canWrite === 'function' && canWrite();
@@ -36,9 +38,33 @@
     const used={coordinator:0,man:0,woman:0};people.forEach(m=>{if(m.category in used)used[m.category]++;});
     return {people,used,limits:{coordinator:group.coordinator_slots,man:group.male_slots,woman:group.female_slots}};
   }
+  function setupSearch() {
+    if ($('ejc-search-team')) return;
+    const list = $('ejc-teams-list');
+    if (!list) return;
+    const search = document.createElement('div');
+    search.className = 'ejc-search-bar';
+    search.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0;';
+    search.innerHTML = `<label for="ejc-search-team" style="font-weight:600">Pesquisar equipe ou integrante</label>
+      <input id="ejc-search-team" type="search" autocomplete="off" placeholder="Ex.: Garçons, João, coordenador..." aria-label="Pesquisar por equipe ou integrante" style="flex:1 1 240px;min-width:0;padding:10px 12px;border-radius:8px;">
+      <span id="ejc-search-count" role="status" aria-live="polite" style="font-size:12px;opacity:.8"></span>`;
+    list.parentNode.insertBefore(search, list);
+    $('ejc-search-team').addEventListener('input', event => {
+      teamSearch = event.target.value;
+      render();
+    });
+  }
   function render() {
+    setupSearch();
+    const query = normalizeSearch(teamSearch);
+    const visibleGroups = query ? groups.filter(group =>
+      normalizeSearch(group.name).includes(query) ||
+      members.some(member => member.team_id === group.id &&
+        (normalizeSearch(member.name).includes(query) ||
+         normalizeSearch(member.category === 'coordinator' ? 'coordenador coordenadora coordenacao' : member.category === 'man' ? 'homem' : 'mulher').includes(query)))
+    ) : groups;
     const totals={filled:0,slots:0,complete:0};
-    const cards=groups.map(group=>{
+    const cards=visibleGroups.map(group=>{
       const {people,used,limits}=counts(group);
       const slots=Object.values(limits).reduce((a,b)=>a+b,0),filled=people.length;
       totals.filled+=filled;totals.slots+=slots;
@@ -52,7 +78,11 @@
     }).join('');
     $('ejc-summary').textContent=`${groups.length} equipes · ${totals.filled}/${totals.slots} vagas ocupadas · ${totals.complete} equipes completas`;
     $('ejc-team-form').style.display=authorized()?'':'none';
-    $('ejc-teams-list').innerHTML=cards||'<p>Nenhuma equipe cadastrada. Cadastre a primeira acima.</p>';
+    const counter = $('ejc-search-count');
+    if (counter) counter.textContent = query ? `${visibleGroups.length} de ${groups.length} equipe(s)` : `${groups.length} equipe(s)`;
+    $('ejc-teams-list').innerHTML=cards || (query
+      ? '<p role="status">Nenhuma equipe ou integrante encontrado. Tente outro nome.</p>'
+      : '<p>Nenhuma equipe cadastrada. Cadastre a primeira acima.</p>');
   }
   function exportRows() {
     const rows=[['Equipe','Nome do integrante','Função','Vagas coordenação','Coordenadores cadastrados','Vagas homens','Homens cadastrados','Vagas mulheres','Mulheres cadastradas','Total preenchido','Total de vagas','Status']];
@@ -89,8 +119,8 @@
     const now=new Date().toLocaleString('pt-BR');
     const logo=new URL('logo-ejc.png',location.href).href;
     win.document.open();win.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Equipes EJC</title><style>
-    *{box-sizing:border-box}body{font:12px Arial,sans-serif;color:#292136;margin:0;background:#fff}.header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #503268;padding-bottom:13px;margin-bottom:15px}.brand{width:85px;height:85px;object-fit:contain}h1{font-size:23px;color:#352047;margin:0 0 5px}.sub{color:#756780;font-size:12px}.meta{display:flex;justify-content:space-between;gap:12px;font-size:11px;margin:14px 0 20px}.summary{display:flex;gap:12px;margin:15px 0 22px}.summary div{flex:1;background:#f2eef6;padding:12px;border-radius:8px;text-align:center}.summary strong{display:block;font-size:20px;color:#4c2e65}.team{margin:0 0 24px;break-inside:avoid-page;page-break-inside:avoid}.team-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}.team-logo{width:48px;height:48px;object-fit:contain}.team h2{font-size:17px;color:#43265d;margin:0 0 4px}.status{color:#8c5c00;font-weight:bold}.status.complete{color:#247443}.stats{display:flex;justify-content:space-between;gap:8px;background:#f7f5f9;padding:9px;border-radius:5px}.track{height:5px;background:#e7e0ee;margin:8px 0 12px;border-radius:6px;overflow:hidden}.track div{height:100%;background:#8c67ac}table{border-collapse:collapse;width:100%;font-size:11px}th{background:#503268;color:#fff;text-align:left}th,td{padding:7px 9px;border:1px solid #e1dbe6}tbody tr:nth-child(even){background:#faf8fc}tbody tr.coord{background:#fff5d8;font-weight:bold}.footer{margin-top:20px;border-top:1px solid #d6ccdf;padding-top:9px;color:#756780;font-size:10px}@page{size:A4;margin:15mm}@media screen{body{max-width:820px;margin:25px auto;padding:20px;box-shadow:0 0 10px #ddd}}@media print{.team{break-inside:avoid-page}thead{display:table-header-group}}
-    </style></head><body><header class="header"><img class="brand" src="${safe(logo)}" alt="Logo EJC"><div><h1>Equipes de Trabalho EJC</h1><div class="sub">Controle de integrantes, coordenação e vagas</div></div></header><div class="meta"><span><b>Emitido por:</b> ${safe(issuer())}</span><span><b>Emissão:</b> ${safe(now)}</span></div><div class="summary"><div><strong>${groups.length}</strong>Equipes</div><div><strong>${members.length}</strong>Integrantes</div><div><strong>${totalSlots}</strong>Vagas totais</div></div>${blocks}<footer class="footer">EJC · Relatório de equipes · ${safe(now)}</footer></body></html>`);win.document.close();
+    *{box-sizing:border-box}body{font:12px Arial,sans-serif;color:#292136;margin:0;background:#fff}.header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #503268;padding-bottom:13px;margin-bottom:15px}.brand{width:200px;height:200px;object-fit:contain}h1{font-size:23px;color:#352047;margin:0 0 5px}.sub{color:#756780;font-size:12px}.meta{display:flex;justify-content:space-between;gap:12px;font-size:11px;margin:14px 0 20px}.summary{display:flex;gap:12px;margin:15px 0 22px}.summary div{flex:1;background:#f2eef6;padding:12px;border-radius:8px;text-align:center}.summary strong{display:block;font-size:20px;color:#4c2e65}.team{margin:0 0 24px;break-inside:avoid-page;page-break-inside:avoid}.team-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}.team-logo{width:60px;height:60px;object-fit:contain}.team h2{font-size:17px;color:#43265d;margin:0 0 4px}.status{color:#8c5c00;font-weight:bold}.status.complete{color:#247443}.stats{display:flex;justify-content:space-between;gap:8px;background:#f7f5f9;padding:9px;border-radius:5px}.track{height:5px;background:#e7e0ee;margin:8px 0 12px;border-radius:6px;overflow:hidden}.track div{height:100%;background:#8c67ac}table{border-collapse:collapse;width:100%;font-size:11px}th{background:#503268;color:#fff;text-align:left}th,td{padding:7px 9px;border:1px solid #e1dbe6}tbody tr:nth-child(even){background:#faf8fc}tbody tr.coord{background:#fff5d8;font-weight:bold}.footer{margin-top:20px;border-top:1px solid #d6ccdf;padding-top:9px;color:#756780;font-size:10px}@page{size:A4;margin:15mm}@media screen{body{max-width:820px;margin:25px auto;padding:20px;box-shadow:0 0 10px #ddd}}@media print{.team{break-inside:avoid-page}thead{display:table-header-group}}
+    </style></head><body><header class="header"><img class="brand" src="${safe(logo)}" alt="Logo EJC"><div><h1>Equipes de Trabalho EJC IASD MACAPÁ</h1><div class="sub">Controle de integrantes, coordenação e vagas</div><div class="sub">Igreja Adventista do 7º Dia MACAPÁ-AP</div></div></header><div class="meta"><span><b>Emitido por:</b> ${safe(issuer())}</span><span><b>Emissão:</b> ${safe(now)}</span></div><div class="summary"><div><strong>${groups.length}</strong>Equipes</div><div><strong>${members.length}</strong>Integrantes</div><div><strong>${totalSlots}</strong>Vagas totais</div></div>${blocks}<footer class="footer">EJC · Relatório de equipes · ${safe(now)}</footer></body></html>`);win.document.close();
     // Esperar as imagens antes da janela de impressão, sem bloquear indefinidamente.
     const imgs=Array.from(win.document.images);
     Promise.race([Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;}))),new Promise(resolve=>setTimeout(resolve,2500))]).then(()=>{if(!win.closed){win.focus();win.print();}});
